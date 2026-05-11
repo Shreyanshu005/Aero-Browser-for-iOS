@@ -1,21 +1,16 @@
-//
-//  ContentView.swift
-//  Aero
-//
-//  Created by Shreyanshu on 08/05/26.
-//
+
+
+
+
+
+
+
 
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        BrowserView(viewModel: BrowserViewModel())
     }
 }
 

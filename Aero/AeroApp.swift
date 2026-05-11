@@ -1,17 +1,20 @@
-//
-//  AeroApp.swift
-//  Aero
-//
-//  Created by Shreyanshu on 08/05/26.
-//
+
+
+
+
+
+
 
 import SwiftUI
 
 @main
 struct AeroApp: App {
+    @State private var viewModel = BrowserViewModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            BrowserView(viewModel: viewModel)
+                .tint(Color(UIColor.label))
         }
     }
 }
