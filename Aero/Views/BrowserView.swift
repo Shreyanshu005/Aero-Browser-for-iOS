@@ -27,7 +27,6 @@ struct BrowserView: View {
                     .zIndex(100)
             }
         }
-        .ignoresSafeArea(.keyboard)
         .animation(AeroAnimation.snappy, value: viewModel.showFindInPage)
         .browserChromeObservers(viewModel: viewModel)
         .browserSheets(viewModel: viewModel)

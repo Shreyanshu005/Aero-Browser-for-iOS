@@ -37,12 +37,25 @@ struct BrowserSurfaceView: View {
             } else {
                 WebViewRepresentable(
                     tab: tab,
+                    chromeMode: viewModel.chromeMode,
+                    isAddressBarFocused: viewModel.isAddressBarFocused,
                     onNavigationEvent: viewModel.handleNavigationEvent
                 )
                 .id(tab.id)
                 .transition(.opacity)
-                .ignoresSafeArea()
+                .webContentSafeArea(edgeToEdge: viewModel.shouldWebContentIgnoreSafeArea)
             }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func webContentSafeArea(edgeToEdge: Bool) -> some View {
+        if edgeToEdge {
+            ignoresSafeArea(.container, edges: [.top, .bottom])
+        } else {
+            self
         }
     }
 }

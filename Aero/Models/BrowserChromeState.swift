@@ -26,8 +26,8 @@ struct BrowserChromeController {
     private var accumulatedDownScroll: CGFloat = 0
     private var accumulatedUpScroll: CGFloat = 0
 
-    private let collapseThreshold: CGFloat = 36
-    private let expandThreshold: CGFloat = 20
+    private let collapseThreshold: CGFloat = 96
+    private let expandThreshold: CGFloat = 48
 
     mutating func handleScroll(_ metrics: WebScrollMetrics) {
         guard metrics.canScroll else {
@@ -78,4 +78,10 @@ struct BrowserChromeController {
         accumulatedDownScroll = 0
         accumulatedUpScroll = 0
     }
+}
+
+enum BrowserChromeLayout {
+    static let expandedBottomInset: CGFloat = 118
+    static let focusedBottomInset: CGFloat = 72
+    static let compactBottomInset: CGFloat = 0
 }
