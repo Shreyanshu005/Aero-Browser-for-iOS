@@ -37,6 +37,7 @@ struct BrowserView: View {
                             )
                             .id(tab.id)
                             .transition(.opacity)
+                            .ignoresSafeArea()
                         }
                     }
 

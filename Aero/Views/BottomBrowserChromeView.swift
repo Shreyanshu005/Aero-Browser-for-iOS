@@ -28,9 +28,20 @@ struct BottomBrowserChromeView: View {
 
     private var expandedChrome: some View {
         VStack(spacing: AeroSpacing.sm) {
+            if viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty {
+                WikiSuggestionsDropdown(suggestions: viewModel.wikiSuggestions) { suggestion in
+                    viewModel.navigateToWikiSuggestion(suggestion)
+                }
+                .padding(.horizontal, AeroSpacing.md)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+
             AddressBar(viewModel: viewModel)
                 .padding(.horizontal, AeroSpacing.md)
-                .padding(.top, AeroSpacing.md)
+                .padding(.top, viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty ? 0 : AeroSpacing.md)
 
             ToolbarView(viewModel: viewModel)
                 .padding(.horizontal, AeroSpacing.md)
@@ -41,6 +52,7 @@ struct BottomBrowserChromeView: View {
                 .fill(.regularMaterial)
                 .ignoresSafeArea(edges: .bottom)
         )
+        .animation(AeroAnimation.snappy, value: viewModel.wikiSuggestions.isEmpty)
     }
 }
 
