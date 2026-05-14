@@ -4,32 +4,34 @@ struct BrowserSurfaceView: View {
     @Bindable var viewModel: BrowserViewModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            if viewModel.showFindInPage {
-                FindInPageBar(viewModel: viewModel)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
-            ZStack(alignment: .bottom) {
-                activePage
-
-                VStack(spacing: 0) {
-                    if let tab = viewModel.activeTab {
-                        ProgressBar(
-                            progress: tab.estimatedProgress,
-                            isLoading: tab.isLoading
-                        )
-                    }
-
-                    BottomBrowserChromeView(viewModel: viewModel)
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                if viewModel.showFindInPage {
+                    FindInPageBar(viewModel: viewModel)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
+
+                ZStack(alignment: .bottom) {
+                    activePage(safeAreaInsets: proxy.safeAreaInsets)
+
+                    VStack(spacing: 0) {
+                        if let tab = viewModel.activeTab {
+                            ProgressBar(
+                                progress: tab.estimatedProgress,
+                                isLoading: tab.isLoading
+                            )
+                        }
+
+                        BottomBrowserChromeView(viewModel: viewModel)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     @ViewBuilder
-    private var activePage: some View {
+    private func activePage(safeAreaInsets: EdgeInsets) -> some View {
         if let tab = viewModel.activeTab {
             if tab.url == nil {
                 NewTabPage(viewModel: viewModel)
@@ -39,23 +41,13 @@ struct BrowserSurfaceView: View {
                     tab: tab,
                     chromeMode: viewModel.chromeMode,
                     isAddressBarFocused: viewModel.isAddressBarFocused,
+                    safeAreaInsets: safeAreaInsets,
                     onNavigationEvent: viewModel.handleNavigationEvent
                 )
                 .id(tab.id)
                 .transition(.opacity)
-                .webContentSafeArea(edgeToEdge: viewModel.shouldWebContentIgnoreSafeArea)
+                .ignoresSafeArea(.container, edges: [.top, .bottom])
             }
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func webContentSafeArea(edgeToEdge: Bool) -> some View {
-        if edgeToEdge {
-            ignoresSafeArea(.container, edges: [.top, .bottom])
-        } else {
-            self
         }
     }
 }
