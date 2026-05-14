@@ -4,16 +4,23 @@ struct BottomBrowserChromeView: View {
     @Bindable var viewModel: BrowserViewModel
 
     var body: some View {
-        Group {
-            switch viewModel.chromeMode {
-            case .expanded:
+        ZStack(alignment: .bottom) {
+            if viewModel.chromeMode == .expanded {
                 expandedChrome
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            case .compact:
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 1.04, anchor: .bottom).combined(with: .opacity),
+                        removal: .scale(scale: 0.88, anchor: .bottom).combined(with: .opacity)
+                    ))
+            }
+
+            if viewModel.chromeMode == .compact {
                 CompactAddressPill(viewModel: viewModel)
                     .padding(.horizontal, AeroSpacing.xl)
                     .padding(.bottom, AeroSpacing.sm)
-                    .transition(.scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.82, anchor: .bottom).combined(with: .opacity),
+                        removal: .scale(scale: 1.08, anchor: .bottom).combined(with: .opacity)
+                    ))
             }
         }
         .animation(AeroAnimation.snappy, value: viewModel.chromeMode)
@@ -58,12 +65,12 @@ private struct CompactAddressPill: View {
             }
             .padding(.horizontal, AeroSpacing.lg)
             .frame(height: 44)
-            .background(.regularMaterial, in: Capsule())
+            .liquidGlassBackground(in: Capsule())
             .overlay(
                 Capsule()
-                    .strokeBorder(Color(UIColor.separator).opacity(0.35), lineWidth: 0.5)
+                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.7)
             )
-            .shadow(color: Color.black.opacity(0.12), radius: 12, y: 4)
+            .shadow(color: Color.black.opacity(0.18), radius: 16, y: 5)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -85,5 +92,16 @@ private struct CompactAddressPill: View {
     private var iconColor: Color {
         if viewModel.activeTab?.isSecure == true { return AeroColor.secure }
         return Color(UIColor.secondaryLabel)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func liquidGlassBackground<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.interactive(true), in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
     }
 }

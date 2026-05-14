@@ -23,7 +23,7 @@ struct BrowserView: View {
                 }
 
 
-                ZStack {
+                ZStack(alignment: .bottom) {
                     if let tab = viewModel.activeTab {
                         if tab.url == nil {
                             NewTabPage(viewModel: viewModel)
@@ -39,19 +39,19 @@ struct BrowserView: View {
                             .transition(.opacity)
                         }
                     }
+
+                    VStack(spacing: 0) {
+                        if let tab = viewModel.activeTab {
+                            ProgressBar(
+                                progress: tab.estimatedProgress,
+                                isLoading: tab.isLoading
+                            )
+                        }
+
+                        BottomBrowserChromeView(viewModel: viewModel)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-
-                if let tab = viewModel.activeTab {
-                    ProgressBar(
-                        progress: tab.estimatedProgress,
-                        isLoading: tab.isLoading
-                    )
-                }
-
-
-                BottomBrowserChromeView(viewModel: viewModel)
             }
 
 
