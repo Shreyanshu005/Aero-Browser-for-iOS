@@ -1,17 +1,53 @@
-//
-//  AeroTests.swift
-//  AeroTests
-//
-//  Created by Shreyanshu on 08/05/26.
-//
-
 import Testing
 @testable import Aero
 
 struct AeroTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func chromeStaysExpandedAtTop() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 0, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 8, contentHeight: 1600, viewportHeight: 800))
+
+        #expect(controller.mode == .expanded)
+    }
+
+    @Test func chromeDoesNotCollapseWhenPageCannotScroll() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 80, contentHeight: 780, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 140, contentHeight: 780, viewportHeight: 800))
+
+        #expect(controller.mode == .expanded)
+    }
+
+    @Test func chromeCollapsesAfterDownwardScrollThreshold() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
+
+        #expect(controller.mode == .compact)
+    }
+
+    @Test func chromeExpandsAfterUpwardScrollThreshold() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 54, contentHeight: 1600, viewportHeight: 800))
+
+        #expect(controller.mode == .expanded)
+    }
+
+    @Test func forceExpandResetsChromeMode() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
+        controller.expand()
+
+        #expect(controller.mode == .expanded)
     }
 
 }

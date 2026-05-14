@@ -23,6 +23,7 @@ final class BrowserViewModel {
     var addressBarText: String = ""
     var searchEngine: SearchEngine = .google
     var contentBlockerEnabled: Bool = true
+    var chromeController = BrowserChromeController()
 
 
     var showMenu: Bool = false
@@ -37,6 +38,7 @@ final class BrowserViewModel {
 
 
     var activeTab: Tab? { tabManager.activeTab }
+    var chromeMode: BottomChromeMode { chromeController.mode }
 
     init() {
         self.tabManager = TabManager()
@@ -70,6 +72,7 @@ final class BrowserViewModel {
 
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
+        chromeController.expand()
     }
 
 
@@ -79,6 +82,16 @@ final class BrowserViewModel {
             if let tab = activeTab, let url = tab.url, !url.isInternalPage {
                 historyStore.addVisit(url: url, title: tab.title)
             }
+        case .didScroll(let metrics):
+            guard activeTab?.url != nil,
+                  isAddressBarFocused == false,
+                  showFindInPage == false,
+                  isShowingTabGrid == false else {
+                chromeController.expand()
+                return
+            }
+
+            chromeController.handleScroll(metrics)
         default:
             break
         }
@@ -106,6 +119,7 @@ final class BrowserViewModel {
 
     func showTabGrid() {
         activeTab?.captureSnapshot()
+        chromeController.expand()
         withAnimation(AeroAnimation.snappy) {
             isShowingTabGrid = true
         }
@@ -119,11 +133,13 @@ final class BrowserViewModel {
 
     func selectTab(_ tab: Tab) {
         tabManager.switchToTab(id: tab.id)
+        chromeController.expand()
         hideTabGrid()
     }
 
     func newTab() {
         tabManager.newTab()
+        chromeController.expand()
         hideTabGrid()
         addressBarText = ""
         isAddressBarFocused = true
@@ -146,6 +162,14 @@ final class BrowserViewModel {
             addressBarText = url.absoluteString
         } else {
             addressBarText = ""
+        }
+    }
+
+    func expandChromeForInteraction(focusAddressBar: Bool = false) {
+        chromeController.expand()
+        if focusAddressBar {
+            syncAddressBarWithActiveTab()
+            isAddressBarFocused = true
         }
     }
 }

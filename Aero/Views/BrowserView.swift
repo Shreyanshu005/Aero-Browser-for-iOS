@@ -51,20 +51,7 @@ struct BrowserView: View {
                 }
 
 
-                VStack(spacing: AeroSpacing.sm) {
-                    AddressBar(viewModel: viewModel)
-                        .padding(.horizontal, AeroSpacing.md)
-                        .padding(.top, AeroSpacing.md)
-
-                    ToolbarView(viewModel: viewModel)
-                        .padding(.horizontal, AeroSpacing.md)
-                }
-                .padding(.bottom, AeroSpacing.sm)
-                .background(
-                    Rectangle()
-                        .fill(.regularMaterial)
-                        .ignoresSafeArea(edges: .bottom)
-                )
+                BottomBrowserChromeView(viewModel: viewModel)
             }
 
 
@@ -79,6 +66,29 @@ struct BrowserView: View {
         }
         .ignoresSafeArea(.keyboard)
         .animation(AeroAnimation.snappy, value: viewModel.showFindInPage)
+        .onChange(of: viewModel.isAddressBarFocused) { _, isFocused in
+            if isFocused {
+                viewModel.expandChromeForInteraction()
+            }
+        }
+        .onChange(of: viewModel.showFindInPage) { _, isShowing in
+            if isShowing {
+                viewModel.expandChromeForInteraction()
+            }
+        }
+        .onChange(of: viewModel.showMenu) { _, isShowing in
+            if isShowing {
+                viewModel.expandChromeForInteraction()
+            }
+        }
+        .onChange(of: viewModel.activeTab?.id) { _, _ in
+            viewModel.expandChromeForInteraction()
+        }
+        .onChange(of: viewModel.activeTab?.url) { _, newURL in
+            if newURL == nil {
+                viewModel.expandChromeForInteraction()
+            }
+        }
 
         .sheet(isPresented: $viewModel.showMenu) {
             MenuSheet(viewModel: viewModel)
