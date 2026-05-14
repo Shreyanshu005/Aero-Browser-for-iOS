@@ -5,10 +5,11 @@
 
 
 
+import UIKit
 import WebKit
 import Combine
 
-final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
     private var observations: [NSKeyValueObservation] = []
@@ -28,6 +29,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     func observeWebView(_ webView: WKWebView) {
 
         observations.removeAll()
+        webView.scrollView.delegate = self
 
         observations.append(
             webView.observe(\.estimatedProgress, options: .new) { [weak self] wv, _ in
@@ -135,5 +137,14 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
             webView.load(navigationAction.request)
         }
         return nil
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let metrics = WebScrollMetrics(
+            offsetY: max(0, scrollView.contentOffset.y + scrollView.adjustedContentInset.top),
+            contentHeight: scrollView.contentSize.height,
+            viewportHeight: scrollView.bounds.height
+        )
+        onNavigationEvent(.didScroll(metrics))
     }
 }
