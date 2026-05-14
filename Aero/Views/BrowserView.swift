@@ -20,10 +20,7 @@ struct BrowserView: View {
 
             if viewModel.isShowingTabGrid {
                 TabGridView(viewModel: viewModel)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .bottom).combined(with: .opacity)
-                    ))
+                    .transition(.chromeBlurReplace)
                     .zIndex(100)
             }
         }

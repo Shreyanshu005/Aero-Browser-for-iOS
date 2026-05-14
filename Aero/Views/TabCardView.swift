@@ -13,6 +13,11 @@ struct TabCardView: View {
     let onSelect: () -> Void
     let onClose: () -> Void
 
+    @State private var dragOffset: CGSize = .zero
+    @State private var isClosing = false
+
+    private let closeThreshold: CGFloat = 90
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topTrailing) {
@@ -63,6 +68,45 @@ struct TabCardView: View {
                     lineWidth: isActive ? 2.5 : 0.5
                 )
         )
-        .onTapGesture { onSelect() }
+        .offset(x: dragOffset.width)
+        .rotationEffect(.degrees(Double(dragOffset.width / 24)))
+        .scaleEffect(isClosing ? 0.86 : 1)
+        .opacity(isClosing ? 0 : max(0.55, 1 - abs(dragOffset.width) / 260))
+        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: dragOffset)
+        .animation(AeroAnimation.smooth, value: isClosing)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .gesture(
+            DragGesture(minimumDistance: 12)
+                .onChanged { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    dragOffset = CGSize(width: value.translation.width, height: 0)
+                }
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    let predicted = value.predictedEndTranslation.width
+                    if abs(horizontal) > closeThreshold || abs(predicted) > closeThreshold * 1.35 {
+                        closeToward(horizontal == 0 ? predicted : horizontal)
+                    } else {
+                        dragOffset = .zero
+                    }
+                }
+        )
+        .onTapGesture {
+            if abs(dragOffset.width) < 8 {
+                onSelect()
+            }
+        }
+    }
+
+    private func closeToward(_ direction: CGFloat) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        isClosing = true
+        dragOffset = CGSize(width: direction >= 0 ? 420 : -420, height: 0)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            onClose()
+            dragOffset = .zero
+            isClosing = false
+        }
     }
 }

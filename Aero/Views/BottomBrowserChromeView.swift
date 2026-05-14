@@ -58,6 +58,7 @@ struct BottomBrowserChromeView: View {
             }
         }
         .padding(.bottom, AeroSpacing.sm)
+        .gesture(openTabsDragGesture)
         .background(
             Rectangle()
                 .fill(.regularMaterial)
@@ -65,6 +66,16 @@ struct BottomBrowserChromeView: View {
         )
         .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
         .animation(AeroAnimation.smooth, value: viewModel.wikiSuggestions.isEmpty)
+    }
+
+    private var openTabsDragGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onEnded { value in
+                guard value.translation.height < -56,
+                      abs(value.translation.height) > abs(value.translation.width) else { return }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                viewModel.showTabGrid()
+            }
     }
 }
 
@@ -98,6 +109,17 @@ private struct CompactAddressPill: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .gesture(openTabsDragGesture)
+    }
+
+    private var openTabsDragGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onEnded { value in
+                guard value.translation.height < -56,
+                      abs(value.translation.height) > abs(value.translation.width) else { return }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                viewModel.showTabGrid()
+            }
     }
 
     private var displayText: String {
