@@ -36,14 +36,7 @@ struct AddressBar: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            if viewModel.isAddressBarFocused && !viewModel.addressBarText.isEmpty {
-                Button {
-                    viewModel.addressBarText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-            } else if viewModel.activeTab?.isLoading == true {
+            if viewModel.activeTab?.isLoading == true {
                 Button { viewModel.stopLoading() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))

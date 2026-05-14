@@ -18,4 +18,10 @@ extension BrowserViewModel {
             isAddressBarFocused = true
         }
     }
+
+    func dismissSearchPresentation() {
+        isAddressBarFocused = false
+        clearWikiSuggestions()
+        chromeController.expand()
+    }
 }

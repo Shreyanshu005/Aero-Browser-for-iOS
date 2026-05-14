@@ -54,7 +54,7 @@ final class Tab: Identifiable {
 
         let wv = WKWebView(frame: .zero, configuration: config)
         wv.allowsBackForwardNavigationGestures = true
-        wv.scrollView.contentInsetAdjustmentBehavior = .never
+        wv.scrollView.contentInsetAdjustmentBehavior = .automatic
 
         self.webView = wv
         return wv

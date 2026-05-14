@@ -7,23 +7,17 @@ struct BottomBrowserChromeView: View {
         ZStack(alignment: .bottom) {
             if viewModel.chromeMode == .expanded {
                 expandedChrome
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 1.04, anchor: .bottom).combined(with: .opacity),
-                        removal: .scale(scale: 0.88, anchor: .bottom).combined(with: .opacity)
-                    ))
+                    .transition(.chromeBlurReplace)
             }
 
             if viewModel.chromeMode == .compact {
                 CompactAddressPill(viewModel: viewModel)
                     .padding(.horizontal, AeroSpacing.xl)
                     .padding(.bottom, AeroSpacing.sm)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.82, anchor: .bottom).combined(with: .opacity),
-                        removal: .scale(scale: 1.08, anchor: .bottom).combined(with: .opacity)
-                    ))
+                    .transition(.chromeBlurReplace)
             }
         }
-        .animation(AeroAnimation.snappy, value: viewModel.chromeMode)
+        .animation(AeroAnimation.smooth, value: viewModel.chromeMode)
     }
 
     private var expandedChrome: some View {
@@ -33,18 +27,35 @@ struct BottomBrowserChromeView: View {
                     viewModel.navigateToWikiSuggestion(suggestion)
                 }
                 .padding(.horizontal, AeroSpacing.md)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .opacity
-                ))
+                .transition(.chromeBlurReplace)
             }
 
-            AddressBar(viewModel: viewModel)
-                .padding(.horizontal, AeroSpacing.md)
-                .padding(.top, viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty ? 0 : AeroSpacing.md)
+            HStack(spacing: AeroSpacing.sm) {
+                AddressBar(viewModel: viewModel)
 
-            ToolbarView(viewModel: viewModel)
-                .padding(.horizontal, AeroSpacing.md)
+                if viewModel.isAddressBarFocused {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        viewModel.dismissSearchPresentation()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color(UIColor.label))
+                            .frame(width: 38, height: 38)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.chromeBlurReplace)
+                }
+            }
+            .padding(.horizontal, AeroSpacing.md)
+            .padding(.top, viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty ? 0 : AeroSpacing.md)
+
+            if !viewModel.isAddressBarFocused {
+                ToolbarView(viewModel: viewModel)
+                    .padding(.horizontal, AeroSpacing.md)
+                    .transition(.chromeBlurReplace)
+            }
         }
         .padding(.bottom, AeroSpacing.sm)
         .background(
@@ -52,7 +63,8 @@ struct BottomBrowserChromeView: View {
                 .fill(.regularMaterial)
                 .ignoresSafeArea(edges: .bottom)
         )
-        .animation(AeroAnimation.snappy, value: viewModel.wikiSuggestions.isEmpty)
+        .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
+        .animation(AeroAnimation.smooth, value: viewModel.wikiSuggestions.isEmpty)
     }
 }
 

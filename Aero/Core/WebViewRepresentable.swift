@@ -10,6 +10,8 @@ import WebKit
 
 struct WebViewRepresentable: UIViewRepresentable {
     let tab: Tab
+    let chromeMode: BottomChromeMode
+    let isAddressBarFocused: Bool
     let onNavigationEvent: (NavigationEvent) -> Void
 
     func makeUIView(context: Context) -> WKWebView {
@@ -19,6 +21,7 @@ struct WebViewRepresentable: UIViewRepresentable {
 
 
         context.coordinator.observeWebView(webView)
+        configureScrollInsets(for: webView)
 
 
         if let url = tab.url {
@@ -29,6 +32,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        configureScrollInsets(for: webView)
 
         guard let url = tab.url else { return }
 
@@ -40,6 +44,23 @@ struct WebViewRepresentable: UIViewRepresentable {
 
     func makeCoordinator() -> WebViewCoordinator {
         WebViewCoordinator(tab: tab, onNavigationEvent: onNavigationEvent)
+    }
+
+    private func configureScrollInsets(for webView: WKWebView) {
+        let bottomInset: CGFloat
+        if isAddressBarFocused {
+            bottomInset = BrowserChromeLayout.focusedBottomInset
+        } else {
+            bottomInset = chromeMode == .compact
+                ? BrowserChromeLayout.compactBottomInset
+                : BrowserChromeLayout.expandedBottomInset
+        }
+
+        webView.scrollView.contentInsetAdjustmentBehavior = chromeMode == .compact && !isAddressBarFocused
+            ? .never
+            : .automatic
+        webView.scrollView.contentInset.bottom = bottomInset
+        webView.scrollView.scrollIndicatorInsets.bottom = bottomInset
     }
 }
 

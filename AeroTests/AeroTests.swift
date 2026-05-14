@@ -21,11 +21,20 @@ struct AeroTests {
         #expect(controller.mode == .expanded)
     }
 
+    @Test func chromeDoesNotCollapseBeforeDownwardScrollThreshold() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 120, contentHeight: 1600, viewportHeight: 800))
+
+        #expect(controller.mode == .expanded)
+    }
+
     @Test func chromeCollapsesAfterDownwardScrollThreshold() {
         var controller = BrowserChromeController()
 
         controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
-        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 138, contentHeight: 1600, viewportHeight: 800))
 
         #expect(controller.mode == .compact)
     }
@@ -34,8 +43,8 @@ struct AeroTests {
         var controller = BrowserChromeController()
 
         controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
-        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
-        controller.handleScroll(WebScrollMetrics(offsetY: 54, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 138, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 88, contentHeight: 1600, viewportHeight: 800))
 
         #expect(controller.mode == .expanded)
     }
@@ -44,7 +53,7 @@ struct AeroTests {
         var controller = BrowserChromeController()
 
         controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
-        controller.handleScroll(WebScrollMetrics(offsetY: 78, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 138, contentHeight: 1600, viewportHeight: 800))
         controller.expand()
 
         #expect(controller.mode == .expanded)
