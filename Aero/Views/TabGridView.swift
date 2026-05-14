@@ -16,40 +16,55 @@ struct TabGridView: View {
     ]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(viewModel.tabManager.tabs) { tab in
-                        TabCardView(
-                            tab: tab,
-                            isActive: tab.id == viewModel.activeTab?.id,
-                            onSelect: { viewModel.selectTab(tab) },
-                            onClose: { viewModel.closeTab(tab) }
-                        )
-                        .transition(.scale.combined(with: .opacity))
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    viewModel.hideTabGrid()
+                }
+
+            NavigationStack {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 14) {
+                        ForEach(viewModel.tabManager.tabs) { tab in
+                            TabCardView(
+                                tab: tab,
+                                isActive: tab.id == viewModel.activeTab?.id,
+                                onSelect: { viewModel.selectTab(tab) },
+                                onClose: { viewModel.closeTab(tab) }
+                            )
+                            .transition(.chromeBlurReplace)
+                        }
+                    }
+                    .padding(.horizontal, AeroSpacing.md)
+                    .padding(.top, AeroSpacing.md)
+                    .padding(.bottom, 48)
+                }
+                .navigationTitle("\(viewModel.tabManager.tabCount) Tabs")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Done") {
+                            viewModel.hideTabGrid()
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            viewModel.newTab()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 40)
+                .background(Color(UIColor.systemBackground).opacity(0.86))
             }
-            .navigationTitle("\(viewModel.tabManager.tabCount) Tabs")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") {
-                        viewModel.hideTabGrid()
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        viewModel.newTab()
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            .background(Color(UIColor.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: AeroRadius.lg))
+            .padding(.horizontal, AeroSpacing.sm)
+            .padding(.top, AeroSpacing.xl)
+            .padding(.bottom, AeroSpacing.sm)
+            .shadow(color: Color.black.opacity(0.18), radius: 24, y: 12)
         }
     }
 }
