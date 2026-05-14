@@ -1,0 +1,39 @@
+import SwiftUI
+
+struct BrowserSheets: ViewModifier {
+    @Bindable var viewModel: BrowserViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $viewModel.showMenu) {
+                MenuSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showHistory) {
+                HistoryView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showBookmarks) {
+                BookmarksView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showDownloads) {
+                DownloadsView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showSettings) {
+                SettingsView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showReaderMode) {
+                ReaderModeView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showAddBookmark) {
+                AddBookmarkSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showTrackerReceipt) {
+                TrackerReceiptView(viewModel: viewModel)
+            }
+    }
+}
+
+extension View {
+    func browserSheets(viewModel: BrowserViewModel) -> some View {
+        modifier(BrowserSheets(viewModel: viewModel))
+    }
+}
