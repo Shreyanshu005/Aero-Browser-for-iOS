@@ -81,6 +81,7 @@ struct BrowserChromeController {
 }
 
 enum BrowserChromeLayout {
+    static let compactTopInset: CGFloat = 0
     static let expandedBottomInset: CGFloat = 118
     static let focusedBottomInset: CGFloat = 72
     static let compactBottomInset: CGFloat = 0

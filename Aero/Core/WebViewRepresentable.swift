@@ -12,6 +12,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     let tab: Tab
     let chromeMode: BottomChromeMode
     let isAddressBarFocused: Bool
+    let safeAreaInsets: EdgeInsets
     let onNavigationEvent: (NavigationEvent) -> Void
 
     func makeUIView(context: Context) -> WKWebView {
@@ -47,6 +48,14 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     private func configureScrollInsets(for webView: WKWebView) {
+        let scrollView = webView.scrollView
+        let oldTopInset = scrollView.contentInset.top
+        let oldVisibleOffset = scrollView.contentOffset.y + oldTopInset
+
+        let topInset = chromeMode == .compact && !isAddressBarFocused
+            ? BrowserChromeLayout.compactTopInset
+            : safeAreaInsets.top
+
         let bottomInset: CGFloat
         if isAddressBarFocused {
             bottomInset = BrowserChromeLayout.focusedBottomInset
@@ -56,11 +65,22 @@ struct WebViewRepresentable: UIViewRepresentable {
                 : BrowserChromeLayout.expandedBottomInset
         }
 
-        webView.scrollView.contentInsetAdjustmentBehavior = chromeMode == .compact && !isAddressBarFocused
-            ? .never
-            : .automatic
-        webView.scrollView.contentInset.bottom = bottomInset
-        webView.scrollView.scrollIndicatorInsets.bottom = bottomInset
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInset.top = topInset
+        scrollView.contentInset.bottom = bottomInset
+        scrollView.scrollIndicatorInsets.top = topInset
+        scrollView.scrollIndicatorInsets.bottom = bottomInset
+
+        guard abs(oldTopInset - topInset) > 0.5 else { return }
+
+        let minOffsetY = -topInset
+        let preservedOffsetY = max(minOffsetY, oldVisibleOffset - topInset)
+        if scrollView.contentOffset.y != preservedOffsetY {
+            scrollView.setContentOffset(
+                CGPoint(x: scrollView.contentOffset.x, y: preservedOffsetY),
+                animated: false
+            )
+        }
     }
 }
 

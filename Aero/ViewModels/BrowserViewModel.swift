@@ -42,9 +42,6 @@ final class BrowserViewModel {
 
     var activeTab: Tab? { tabManager.activeTab }
     var chromeMode: BottomChromeMode { chromeController.mode }
-    var shouldWebContentIgnoreSafeArea: Bool {
-        chromeMode == .compact && !isAddressBarFocused
-    }
 
     init() {
         self.tabManager = TabManager()
