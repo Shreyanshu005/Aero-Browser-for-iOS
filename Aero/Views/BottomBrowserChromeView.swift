@@ -110,10 +110,14 @@ private struct CompactAddressPill: View {
 private extension View {
     @ViewBuilder
     func liquidGlassBackground<S: Shape>(in shape: S) -> some View {
+#if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             self.glassEffect(.regular.interactive(true), in: shape)
         } else {
             self.background(.ultraThinMaterial, in: shape)
         }
+#else
+        self.background(.ultraThinMaterial, in: shape)
+#endif
     }
 }

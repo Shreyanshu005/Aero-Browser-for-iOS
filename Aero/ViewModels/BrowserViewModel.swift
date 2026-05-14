@@ -11,9 +11,8 @@ import WebKit
 @Observable
 final class BrowserViewModel {
 
-    // MARK: - Wikipedia suggestions
     var wikiSuggestions: [WikiSuggestion] = []
-    private var wikiTask: Task<Void, Never>?
+    var wikiTask: Task<Void, Never>?
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -117,92 +116,5 @@ final class BrowserViewModel {
 
     func stopLoading() {
         activeTab?.webView?.stopLoading()
-    }
-
-
-
-    func showTabGrid() {
-        activeTab?.captureSnapshot()
-        chromeController.expand()
-        withAnimation(AeroAnimation.snappy) {
-            isShowingTabGrid = true
-        }
-    }
-
-    func hideTabGrid() {
-        withAnimation(AeroAnimation.snappy) {
-            isShowingTabGrid = false
-        }
-    }
-
-    func selectTab(_ tab: Tab) {
-        tabManager.switchToTab(id: tab.id)
-        chromeController.expand()
-        hideTabGrid()
-    }
-
-    func newTab() {
-        tabManager.newTab()
-        chromeController.expand()
-        hideTabGrid()
-        addressBarText = ""
-        isAddressBarFocused = true
-    }
-
-    func closeTab(_ tab: Tab) {
-        withAnimation(AeroAnimation.snappy) {
-            tabManager.closeTab(id: tab.id)
-        }
-    }
-
-
-
-    func shareURL() -> URL? {
-        activeTab?.url
-    }
-
-    func syncAddressBarWithActiveTab() {
-        if let url = activeTab?.url {
-            addressBarText = url.absoluteString
-        } else {
-            addressBarText = ""
-        }
-    }
-
-    func expandChromeForInteraction(focusAddressBar: Bool = false) {
-        chromeController.expand()
-        if focusAddressBar {
-            syncAddressBarWithActiveTab()
-            isAddressBarFocused = true
-        }
-    }
-
-    func fetchWikiSuggestions(for query: String) {
-        wikiTask?.cancel()
-        guard !query.isEmpty, isAddressBarFocused else {
-            wikiSuggestions = []
-            return
-        }
-        wikiTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled else { return }
-            let results = await WikipediaService.search(query: query)
-            guard !Task.isCancelled else { return }
-            await MainActor.run { self.wikiSuggestions = results }
-        }
-    }
-
-    func clearWikiSuggestions() {
-        wikiTask?.cancel()
-        wikiSuggestions = []
-    }
-
-    func navigateToWikiSuggestion(_ suggestion: WikiSuggestion) {
-        guard let url = suggestion.pageURL else { return }
-        addressBarText = url.absoluteString
-        tabManager.loadInActiveTab(url: url)
-        isAddressBarFocused = false
-        clearWikiSuggestions()
-        chromeController.expand()
     }
 }
