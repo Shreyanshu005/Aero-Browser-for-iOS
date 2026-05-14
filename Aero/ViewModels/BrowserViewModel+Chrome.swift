@@ -1,3 +1,5 @@
+import Foundation
+
 extension BrowserViewModel {
     func shareURL() -> URL? {
         activeTab?.url
