@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 
 struct TabCardView: View {
@@ -69,9 +62,9 @@ struct TabCardView: View {
                 )
         )
         .offset(x: dragOffset.width)
-        .rotationEffect(.degrees(Double(dragOffset.width / 24)))
+        .rotationEffect(.degrees(Double(dragOffset.width) / 24))
         .scaleEffect(isClosing ? 0.86 : 1)
-        .opacity(isClosing ? 0 : max(0.55, 1 - abs(dragOffset.width) / 260))
+        .opacity(isClosing ? 0 : max(0.55, 1 - abs(dragOffset.width) / 260.0))
         .animation(.spring(response: 0.34, dampingFraction: 0.82), value: dragOffset)
         .animation(AeroAnimation.smooth, value: isClosing)
         .contentShape(RoundedRectangle(cornerRadius: 10))
