@@ -1,105 +1,88 @@
 import SwiftUI
+import WebKit
+
+// Lightweight wrapper to display a WKWebView snapshot in card previews
+private struct TabWebViewSnapshot: UIViewRepresentable {
+    let webView: WKWebView
+
+    func makeUIView(context: Context) -> WKWebView { webView }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
 
 struct TabCardView: View {
     let tab: Tab
     let isActive: Bool
-    let onSelect: () -> Void
-    let onClose: () -> Void
-
-    @State private var dragOffset: CGSize = .zero
-    @State private var isClosing = false
-
-    private let closeThreshold: CGFloat = 90
+    private let cardRadius: CGFloat = 28
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .topTrailing) {
-                Group {
-                    if let snapshot = tab.snapshot {
-                        Image(uiImage: snapshot)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Color(UIColor.tertiarySystemFill)
-                            .overlay {
-                                Image(systemName: "globe")
-                                    .font(.system(size: 28, weight: .light))
-                                    .foregroundStyle(.tertiary)
-                            }
-                    }
-                }
-                .frame(height: 150)
-                .clipped()
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onClose()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(6)
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                titleBar
+                    .frame(height: 46)
+                snapshotArea
+                    .frame(width: geo.size.width, height: geo.size.height - 46)
             }
-
-            HStack(spacing: 6) {
-                Text(tab.displayTitle)
-                    .font(.caption)
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color(UIColor.secondarySystemBackground))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(
-                    isActive ? Color(UIColor.label) : Color(UIColor.separator),
-                    lineWidth: isActive ? 2.5 : 0.5
-                )
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .strokeBorder(.white.opacity(isActive ? 0.15 : 0.06), lineWidth: 0.5)
         )
-        .offset(x: dragOffset.width)
-        .rotationEffect(.degrees(Double(dragOffset.width) / 24))
-        .scaleEffect(isClosing ? 0.86 : 1)
-        .opacity(isClosing ? 0 : max(0.55, 1 - abs(dragOffset.width) / 260.0))
-        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: dragOffset)
-        .animation(AeroAnimation.smooth, value: isClosing)
-        .contentShape(RoundedRectangle(cornerRadius: 10))
-        .gesture(
-            DragGesture(minimumDistance: 12)
-                .onChanged { value in
-                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                    dragOffset = CGSize(width: value.translation.width, height: 0)
-                }
-                .onEnded { value in
-                    let horizontal = value.translation.width
-                    let predicted = value.predictedEndTranslation.width
-                    if abs(horizontal) > closeThreshold || abs(predicted) > closeThreshold * 1.35 {
-                        closeToward(horizontal == 0 ? predicted : horizontal)
-                    } else {
-                        dragOffset = .zero
-                    }
-                }
-        )
-        .onTapGesture {
-            if abs(dragOffset.width) < 8 {
-                onSelect()
-            }
-        }
+        .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
     }
 
-    private func closeToward(_ direction: CGFloat) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        isClosing = true
-        dragOffset = CGSize(width: direction >= 0 ? 420 : -420, height: 0)
+    private var titleBar: some View {
+        HStack(spacing: 10) {
+            if let favicon = tab.favicon {
+                Image(uiImage: favicon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 18)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Image(systemName: "globe")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 18, height: 18)
+            }
+            Text(tab.displayTitle.isEmpty ? "New Tab" : tab.displayTitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
+                .lineLimit(1)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.black)
+    }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-            onClose()
-            dragOffset = .zero
-            isClosing = false
+    @ViewBuilder
+    private var snapshotArea: some View {
+        if let snapshot = tab.snapshot {
+            // Already have a screenshot — show it
+            Image(uiImage: snapshot)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .clipped()
+        } else if let webView = tab.webView {
+            // Live WebView exists — render it scaled down
+            TabWebViewSnapshot(webView: webView)
+                .clipped()
+                .allowsHitTesting(false) // disable interaction in card
+        } else {
+            // Brand new tab, no webView yet
+            ZStack {
+                Color.black
+                VStack(spacing: 10) {
+                    Image(systemName: "safari")
+                        .font(.system(size: 42, weight: .ultraLight))
+                        .foregroundStyle(.white.opacity(0.18))
+                    Text(tab.url?.host ?? "New Tab")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.25))
+                }
+            }
         }
     }
 }

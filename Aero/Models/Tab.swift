@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import WebKit
 
@@ -29,8 +22,6 @@ final class Tab: Identifiable {
     let createdAt: Date
     var lastAccessedAt: Date
 
-
-
     var webView: WKWebView?
 
     init(url: URL? = nil) {
@@ -40,7 +31,6 @@ final class Tab: Identifiable {
         self.createdAt = Date()
         self.lastAccessedAt = Date()
     }
-
 
     func createWebView() -> WKWebView {
         if let existing = webView {
@@ -60,11 +50,11 @@ final class Tab: Identifiable {
         return wv
     }
 
-
+    // ← Fixed: no snapshotWidth cap, full resolution
     func captureSnapshot() {
         guard let webView = webView else { return }
         let config = WKSnapshotConfiguration()
-        config.snapshotWidth = 200
+        // removed snapshotWidth — was forcing tiny 200pt image
 
         webView.takeSnapshot(with: config) { [weak self] image, _ in
             DispatchQueue.main.async {
