@@ -34,4 +34,16 @@ extension BrowserViewModel {
             tabManager.closeTab(id: tab.id)
         }
     }
+
+    func switchToPreviousTab() {
+        tabManager.switchToPreviousTab()
+        chromeController.expand()
+        syncAddressBarWithActiveTab()
+    }
+
+    func switchToNextTab() {
+        tabManager.switchToNextTab()
+        chromeController.expand()
+        syncAddressBarWithActiveTab()
+    }
 }

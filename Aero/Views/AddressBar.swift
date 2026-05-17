@@ -11,6 +11,8 @@ struct AddressBar: View {
     @Bindable var viewModel: BrowserViewModel
     @FocusState private var isFocused: Bool
 
+    @State private var isTabSwipeGestureActive = false
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: iconName)
@@ -59,6 +61,42 @@ struct AddressBar: View {
                 viewModel.isAddressBarFocused = true
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                .onChanged { v in
+                    guard viewModel.isAddressBarFocused == false else { return }
+
+                    let dx = v.translation.width
+                    let dy = v.translation.height
+                    guard abs(dx) > 10, abs(dx) > abs(dy) * 2.0 else { return }
+
+                    let dir: CGFloat = dx > 0 ? 1 : -1
+                    if !isTabSwipeGestureActive {
+                        isTabSwipeGestureActive = true
+                        viewModel.beginTabSwipe(direction: dir)
+                    }
+                    viewModel.updateTabSwipe(translationX: dx)
+                }
+                .onEnded { v in
+                    defer {
+                        isTabSwipeGestureActive = false
+                    }
+                    guard viewModel.isAddressBarFocused == false else { return }
+
+                    let dx = v.translation.width
+                    let dy = v.translation.height
+                    guard abs(dx) > 30, abs(dx) > abs(dy) * 2.0 else {
+                        if viewModel.isTabSwipeActive {
+                            viewModel.completeTabSwipe(commit: false, width: UIScreen.main.bounds.width)
+                        }
+                        return
+                    }
+
+                    let predicted = v.predictedEndTranslation.width
+                    let commit = abs(predicted) > 120 || abs(dx) > 120
+                    viewModel.completeTabSwipe(commit: commit, width: UIScreen.main.bounds.width)
+                }
+        )
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
             isFocused = newValue
             if !newValue { viewModel.clearWikiSuggestions() }

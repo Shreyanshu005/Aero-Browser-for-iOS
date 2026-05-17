@@ -15,6 +15,7 @@ struct WebViewRepresentable: UIViewRepresentable {
 
 
         context.coordinator.observeWebView(webView)
+        configureAppearance(for: webView)
         configureScrollInsets(for: webView)
 
 
@@ -26,6 +27,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        configureAppearance(for: webView)
         configureScrollInsets(for: webView)
 
         guard let url = tab.url else { return }
@@ -45,9 +47,12 @@ struct WebViewRepresentable: UIViewRepresentable {
         let oldTopInset = scrollView.contentInset.top
         let oldVisibleOffset = scrollView.contentOffset.y + oldTopInset
 
-        let topInset = chromeMode == .compact && !isAddressBarFocused
-            ? BrowserChromeLayout.compactTopInset
-            : safeAreaInsets.top
+        let topInset: CGFloat = {
+            if chromeMode == .compact && !isAddressBarFocused {
+                return BrowserChromeLayout.compactTopInset
+            }
+            return 0
+        }()
 
         let bottomInset: CGFloat
         if isAddressBarFocused {
@@ -73,6 +78,15 @@ struct WebViewRepresentable: UIViewRepresentable {
                 CGPoint(x: scrollView.contentOffset.x, y: preservedOffsetY),
                 animated: false
             )
+        }
+    }
+
+    private func configureAppearance(for webView: WKWebView) {
+        let bg = tab.pageBackgroundColor
+        webView.scrollView.backgroundColor = bg
+        webView.backgroundColor = bg
+        if #available(iOS 15.0, *) {
+            webView.underPageBackgroundColor = bg
         }
     }
 }

@@ -19,6 +19,7 @@ final class Tab: Identifiable {
     var isSecure: Bool = false
     var snapshot: UIImage?
     var favicon: UIImage?
+    var pageBackgroundColor: UIColor = .systemBackground
     let createdAt: Date
     var lastAccessedAt: Date
 

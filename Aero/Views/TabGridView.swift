@@ -3,28 +3,25 @@ import SwiftUI
 struct TabGridView: View {
     @Bindable var viewModel: BrowserViewModel
 
-    @State private var appeared     = false
-    @State private var offset: CGFloat  = 0
+    @State private var appeared = false
+
+    @State private var offset: CGFloat = 0
     @State private var dragStart: CGFloat = 0
-    @State private var dragDir: DragAxis  = .undecided
+    @State private var dragDir: DragAxis = .undecided
+
     @State private var verticalDrag: CGFloat = 0
+    @State private var verticalDragTabID: UUID? = nil
+    @State private var isVerticalInteracting = false
     @State private var isDismissing = false
-
-    // Physics momentum
-    @State private var momentumVelocity: CGFloat = 0
-    @State private var momentumTimer: Timer? = nil
-
-    private enum DragAxis { case undecided, horizontal, vertical }
 
     private var tabs: [Tab] { viewModel.tabManager.tabs }
 
-    private let cardStep: CGFloat   = 265
-    private let stackPeek: CGFloat  = 22
+    private enum DragAxis { case undecided, horizontal, vertical }
+
+    private let cardStep: CGFloat = 265
+    private let stackPeek: CGFloat = 22
     private let depthScale: CGFloat = 0.055
-    private let maxCards            = 3
-    // Physics constants
-    private let friction: CGFloat   = 0.88   // velocity multiplied each frame (0-1, lower = more friction)
-    private let snapThreshold: CGFloat = 80  // velocity below this → snap to nearest
+    private let maxCards = 3
 
     var body: some View {
         ZStack {
@@ -44,31 +41,23 @@ struct TabGridView: View {
         }
     }
 
-    // MARK: - Deck
-
     private var deck: some View {
         GeometryReader { geo in
-            let cardW  = geo.size.width * 0.78
-            let cardH  = geo.size.height * 0.85
+            let cardW = geo.size.width * 0.78
+            let cardH = geo.size.height * 0.85
             let maxOff = max(0, CGFloat(tabs.count - 1) * cardStep)
             let fraction = (offset / cardStep) - floor(offset / cardStep)
 
             ZStack {
                 ForEach(Array(tabs.enumerated().reversed()), id: \.element.id) { (index: Int, tab: Tab) in
                     let depth = CGFloat(index) - offset / cardStep
-
-                    // Wide visibility window so cards never pop out mid-scroll
                     guard depth > -3.0 && depth < CGFloat(maxCards) else { return AnyView(EmptyView()) }
 
                     let isFront = depth > -0.5 && depth < 0.5
 
                     let xOffset: CGFloat = {
-                        if depth < 0 {
-                            // Passed: slide right off screen — stays fully rendered
-                            return -depth * cardStep
-                        }
+                        if depth < 0 { return -depth * cardStep }
                         let basePeek = -depth * stackPeek
-                        // 75% cascade: next card starts sliding when current is 75% revealed
                         if depth > 0 && fraction > 0.75 {
                             let distToNextFront = depth - (1.0 - fraction)
                             if distToNextFront > 0 && distToNextFront < 1 {
@@ -81,7 +70,7 @@ struct TabGridView: View {
 
                     let yOffset: CGFloat = {
                         let stackY = max(0, depth) * stackPeek * 0.5
-                        return isFront ? stackY + verticalDrag : stackY
+                        return tab.id == verticalDragTabID ? stackY + verticalDrag : stackY
                     }()
 
                     let scale: CGFloat = max(0.75, 1.0 - max(0, depth) * depthScale)
@@ -100,182 +89,32 @@ struct TabGridView: View {
                             .offset(x: xOffset, y: yOffset)
                             .opacity(opacity)
                             .zIndex(Double(tabs.count - index))
-                            .allowsHitTesting(isFront)
+                            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .allowsHitTesting(depth >= -0.5 && depth < CGFloat(maxCards))
                             .onTapGesture {
-                                guard isFront, abs(verticalDrag) < 10 else { return }
+                                guard isFront, !isVerticalInteracting else { return }
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 viewModel.selectTab(tab)
                             }
+                            .simultaneousGesture(verticalDismissGesture(for: tab))
                     )
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, geo.size.height * 0.06)
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 6, coordinateSpace: .local)
-                    .onChanged { v in
-                        // Stop any ongoing momentum
-                        stopMomentum()
-
-                        let dx = v.translation.width
-                        let dy = v.translation.height
-
-                        if dragDir == .undecided {
-                            if abs(dy) > abs(dx) * 1.4 && abs(dy) > 12 {
-                                dragDir = .vertical
-                            } else if abs(dx) > 10 {
-                                dragDir = .horizontal
-                            } else { return }
-                        }
-
-                        if dragDir == .horizontal {
-                            // Raw 1:1 — zero animation
-                            let raw = dragStart + dx
-                            var tx = Transaction()
-                            tx.disablesAnimations = true
-                            withTransaction(tx) {
-                                if raw < 0 {
-                                    offset = raw * 0.12
-                                } else if raw > maxOff {
-                                    offset = maxOff + (raw - maxOff) * 0.12
-                                } else {
-                                    offset = raw
-                                }
-                            }
-                        } else if dragDir == .vertical {
-                            var tx = Transaction()
-                            tx.disablesAnimations = true
-                            withTransaction(tx) { verticalDrag = dy }
-                        }
-                    }
-                    .onEnded { v in
-                        defer { dragDir = .undecided }
-
-                        if dragDir == .vertical {
-                            if v.translation.height < -100 || v.predictedEndTranslation.height < -200 {
-                                triggerDismiss()
-                            } else {
-                                withAnimation(.interactiveSpring(response: 0.4, dampingFraction: 0.72)) {
-                                    verticalDrag = 0
-                                }
-                            }
-                            return
-                        }
-
-                        // Launch physics momentum with finger velocity
-                        let vel = v.velocity.width
-                        if abs(vel) > 150 {
-                            launchMomentum(velocity: vel, maxOff: maxOff)
-                        }
-                        // No snap on slow release — card stays exactly where finger left it
-                        // Only momentum-end triggers a snap
-                    }
-            )
-            .onAppear { dragStart = offset }
-        }
-    }
-
-    // MARK: - Physics Momentum
-
-    /// Launches a CADisplayLink-rate timer that applies friction each frame
-    /// and moves offset by the decaying velocity — every card is physically visited.
-    private func launchMomentum(velocity: CGFloat, maxOff: CGFloat) {
-        stopMomentum()
-        momentumVelocity = velocity
-
-        // ~60fps timer
-        momentumTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
-            // Decay velocity
-            momentumVelocity *= friction
-
-            // Move offset — positive velocity = swipe right = offset increases
-            let newOffset = offset + momentumVelocity / 60.0
-
-            // Hard clamp at edges (no rubber band during momentum)
-            if newOffset <= 0 {
-                var tx = Transaction(); tx.disablesAnimations = true
-                withTransaction(tx) { offset = 0; dragStart = 0 }
-                stopMomentum()
-                return
-            }
-            if newOffset >= maxOff {
-                var tx = Transaction(); tx.disablesAnimations = true
-                withTransaction(tx) { offset = maxOff; dragStart = maxOff }
-                stopMomentum()
-                return
-            }
-
-            // Direct assignment — no animation, pure frame-by-frame
-            var tx = Transaction(); tx.disablesAnimations = true
-            withTransaction(tx) { offset = newOffset }
-
-            // When velocity is low enough, snap to nearest card and stop
-            if abs(momentumVelocity) < snapThreshold {
-                stopMomentum()
-                snapToNearest(maxOff: maxOff)
+            .simultaneousGesture(horizontalPagingGesture(maxOff: maxOff))
+            .onAppear {
+                if let activeID = viewModel.activeTab?.id,
+                   let i = viewModel.tabManager.tabs.firstIndex(where: { $0.id == activeID }) {
+                    offset = CGFloat(i) * cardStep
+                } else {
+                    offset = 0
+                }
+                dragStart = offset
             }
         }
     }
-
-    private func stopMomentum() {
-        momentumTimer?.invalidate()
-        momentumTimer = nil
-        momentumVelocity = 0
-    }
-
-    private func snapToNearest(maxOff: CGFloat) {
-        let snapped = (offset / cardStep).rounded()
-            .clamped(to: 0...CGFloat(tabs.count - 1)) * cardStep
-        withAnimation(.interactiveSpring(response: 0.38, dampingFraction: 0.86)) {
-            offset = snapped
-        }
-        dragStart = snapped
-    }
-
-    // MARK: - Dismiss (swipe up)
-
-    private func triggerDismiss() {
-        guard !tabs.isEmpty, !isDismissing else { return }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        isDismissing = true
-
-        let dismissedIndex = Int((offset / cardStep).rounded()).clamped(to: 0...(tabs.count - 1))
-        let tab = tabs[dismissedIndex]
-
-        withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.94)) {
-            verticalDrag = -900
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
-            // Pre-shift offset so that after removal the next card sits at depth=0
-            // with no positional change — prevents the slide-up jerk.
-            // If dismissedIndex > 0, offset decreases by one step so the card
-            // behind (now index-1) computes the same depth it had before removal.
-            let targetOffset: CGFloat
-            if dismissedIndex > 0 {
-                targetOffset = max(0, offset - cardStep)
-            } else {
-                targetOffset = 0
-            }
-
-            var tx = Transaction()
-            tx.disablesAnimations = true
-            withTransaction(tx) {
-                // Silently reposition offset first — cards don't move visually
-                offset = targetOffset
-                dragStart = targetOffset
-                // Now remove — the behind card is already at the right depth
-                viewModel.closeTab(tab)
-                verticalDrag = 0
-            }
-
-            isDismissing = false
-            if viewModel.tabManager.tabs.isEmpty { viewModel.hideTabGrid() }
-        }
-    }
-
-    // MARK: - Background
 
     private var background: some View {
         ZStack {
@@ -292,8 +131,6 @@ struct TabGridView: View {
             .ignoresSafeArea()
         }
     }
-
-    // MARK: - Bottom Controls
 
     private var bottomControls: some View {
         HStack {
@@ -321,9 +158,127 @@ struct TabGridView: View {
         }
         .padding(.horizontal, 28)
     }
-}
 
-// MARK: - Helpers
+    private func horizontalPagingGesture(maxOff: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .local)
+            .onChanged { v in
+                guard !isVerticalInteracting else { return }
+                let dx = v.translation.width
+                let dy = v.translation.height
+
+                if dragDir == .undecided {
+                    if abs(dx) > 8 {
+                        dragDir = .horizontal
+                        dragStart = offset
+                    } else if abs(dy) > 24, abs(dy) > abs(dx) * 2.0 {
+                        dragDir = .vertical
+                        return
+                    } else {
+                        return
+                    }
+                }
+
+                guard dragDir == .horizontal else { return }
+
+                let raw = dragStart + dx
+                var tx = Transaction()
+                tx.disablesAnimations = true
+                withTransaction(tx) {
+                    if raw < 0 {
+                        offset = raw * 0.12
+                    } else if raw > maxOff {
+                        offset = maxOff + (raw - maxOff) * 0.12
+                    } else {
+                        offset = raw
+                    }
+                }
+            }
+            .onEnded { v in
+                defer { dragDir = .undecided }
+                guard dragDir == .horizontal, !tabs.isEmpty else { return }
+
+                let currentIndex = Int((offset / cardStep).rounded()).clamped(to: 0...(tabs.count - 1))
+                let predicted = dragStart + v.predictedEndTranslation.width
+                let predictedIndex = Int((predicted / cardStep).rounded()).clamped(to: 0...(tabs.count - 1))
+
+                let maxJump = 2
+                let targetIndex = predictedIndex.clamped(
+                    to: max(0, currentIndex - maxJump)...min(tabs.count - 1, currentIndex + maxJump)
+                )
+
+                let target = CGFloat(targetIndex) * cardStep
+                withAnimation(.interactiveSpring(response: 0.32, dampingFraction: 0.86)) {
+                    offset = target
+                }
+                dragStart = target
+            }
+    }
+
+    private func verticalDismissGesture(for tab: Tab) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .local)
+            .onChanged { v in
+                guard !isDismissing else { return }
+
+                let dx = v.translation.width
+                let dy = v.translation.height
+                guard dy < -18, abs(dy) > abs(dx) * 1.35 else { return }
+
+                isVerticalInteracting = true
+                verticalDragTabID = tab.id
+
+                var tx = Transaction()
+                tx.disablesAnimations = true
+                withTransaction(tx) { verticalDrag = dy }
+            }
+            .onEnded { v in
+                guard verticalDragTabID == tab.id else { return }
+
+                let dy = v.translation.height
+                let predicted = v.predictedEndTranslation.height
+                let shouldDismiss = dy < -140 || predicted < -220
+
+                if shouldDismiss {
+                    triggerDismiss(tab: tab)
+                } else {
+                    withAnimation(.interactiveSpring(response: 0.35, dampingFraction: 0.82)) {
+                        verticalDrag = 0
+                    }
+                    verticalDragTabID = nil
+                    isVerticalInteracting = false
+                }
+            }
+    }
+
+    private func triggerDismiss(tab: Tab) {
+        guard !isDismissing else { return }
+        isDismissing = true
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.92)) {
+            verticalDrag = -1000
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            if let removedIndex = viewModel.tabManager.tabs.firstIndex(where: { $0.id == tab.id }) {
+                let currentFrontIndex = Int((offset / cardStep).rounded())
+                    .clamped(to: 0...max(viewModel.tabManager.tabs.count - 1, 0))
+                viewModel.closeTab(tab)
+                if removedIndex < currentFrontIndex {
+                    offset = max(0, offset - cardStep)
+                }
+            } else {
+                viewModel.closeTab(tab)
+            }
+
+            verticalDrag = 0
+            verticalDragTabID = nil
+            isVerticalInteracting = false
+            isDismissing = false
+
+            if viewModel.tabManager.tabs.isEmpty { viewModel.hideTabGrid() }
+        }
+    }
+}
 
 extension Comparable {
     func clamped(to range: ClosedRange<Self>) -> Self {
