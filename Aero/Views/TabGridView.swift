@@ -27,6 +27,10 @@ struct TabGridView: View {
         ZStack {
             background
             VStack(spacing: 0) {
+                topControls
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : -10)
+                    .padding(.top, 14)
                 Spacer()
                 deck.opacity(appeared ? 1 : 0)
                 Spacer()
@@ -159,6 +163,28 @@ struct TabGridView: View {
         .padding(.horizontal, 28)
     }
 
+    private var topControls: some View {
+        HStack {
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                viewModel.closeAllTabs()
+            } label: {
+                Text("Clear All")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .environment(\.colorScheme, .dark)
+            }
+            .disabled(viewModel.tabManager.tabs.count <= 1)
+            .opacity(viewModel.tabManager.tabs.count <= 1 ? 0.4 : 1.0)
+
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+    }
+
     private func horizontalPagingGesture(maxOff: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 6, coordinateSpace: .local)
             .onChanged { v in
@@ -269,6 +295,10 @@ struct TabGridView: View {
             } else {
                 viewModel.closeTab(tab)
             }
+
+            let maxOff = max(0, CGFloat(max(viewModel.tabManager.tabs.count - 1, 0)) * cardStep)
+            offset = offset.clamped(to: 0...maxOff)
+            dragStart = offset
 
             verticalDrag = 0
             verticalDragTabID = nil

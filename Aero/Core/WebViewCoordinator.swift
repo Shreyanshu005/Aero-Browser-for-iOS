@@ -13,6 +13,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
     private var observations: [NSKeyValueObservation] = []
+    private weak var refreshControl: UIRefreshControl?
 
     init(tab: Tab, onNavigationEvent: @escaping (NavigationEvent) -> Void) {
         self.tab = tab
@@ -30,6 +31,16 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
         observations.removeAll()
         webView.scrollView.delegate = self
+        webView.scrollView.alwaysBounceVertical = true
+
+        if webView.scrollView.refreshControl == nil {
+            let rc = UIRefreshControl()
+            rc.addTarget(self, action: #selector(handleRefreshControl), for: .valueChanged)
+            webView.scrollView.refreshControl = rc
+            refreshControl = rc
+        } else {
+            refreshControl = webView.scrollView.refreshControl
+        }
 
         observations.append(
             webView.observe(\.estimatedProgress, options: .new) { [weak self] wv, _ in
@@ -100,6 +111,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         onNavigationEvent(.didFinishLoading)
 
         updateThemeColor(from: webView)
+        refreshControl?.endRefreshing()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.tab.captureSnapshot()
@@ -202,11 +214,17 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         tab.isLoading = false
         onNavigationEvent(.didFailLoading(error))
+        refreshControl?.endRefreshing()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         tab.isLoading = false
         onNavigationEvent(.didFailLoading(error))
+        refreshControl?.endRefreshing()
+    }
+
+    @objc private func handleRefreshControl() {
+        tab.webView?.reload()
     }
 
     func webView(

@@ -20,16 +20,15 @@ struct AddressBar: View {
                 .foregroundStyle(iconColor)
 
             if viewModel.isAddressBarFocused {
-                TextField("Search or enter URL", text: $viewModel.addressBarText)
-                    .font(.system(.body, design: .default))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.webSearch)
-                    .submitLabel(.go)
-                    .focused($isFocused)
-                    .onSubmit {
-                        viewModel.submitAddressBar()
-                    }
+                SelectableTextField(
+                    placeholder: "Search or enter URL",
+                    text: $viewModel.addressBarText,
+                    isFirstResponder: $isFocused,
+                    selectAllOnFocus: true,
+                    keyboardType: .webSearch,
+                    onSubmit: { viewModel.submitAddressBar() }
+                )
+                .frame(height: 22)
             } else {
                 Text(displayText)
                     .font(.system(.body, weight: .medium))
@@ -100,9 +99,6 @@ struct AddressBar: View {
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
             isFocused = newValue
             if !newValue { viewModel.clearWikiSuggestions() }
-        }
-        .onChange(of: isFocused) { _, newValue in
-            if !newValue { viewModel.isAddressBarFocused = false }
         }
         .onChange(of: viewModel.addressBarText) { _, newText in
             viewModel.fetchWikiSuggestions(for: newText)

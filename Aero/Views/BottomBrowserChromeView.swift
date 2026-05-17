@@ -12,8 +12,8 @@ struct BottomBrowserChromeView: View {
 
             if viewModel.chromeMode == .compact {
                 CompactAddressPill(viewModel: viewModel)
-                    .padding(.horizontal, AeroSpacing.xl)
-                    .padding(.bottom, AeroSpacing.sm)
+                    .frame(maxWidth: 260)
+                    .padding(.bottom, 2)
                     .transition(.chromeBlurReplace)
             }
         }
@@ -30,6 +30,21 @@ struct BottomBrowserChromeView: View {
                 .transition(.chromeBlurReplace)
             }
 
+            dockContent
+                .transition(.chromeBlurReplace)
+        }
+        .padding(.bottom, 2)
+        .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
+        .animation(AeroAnimation.smooth, value: viewModel.wikiSuggestions.isEmpty)
+    }
+
+    private var dockContent: some View {
+        VStack(spacing: AeroSpacing.sm) {
+            if let tab = viewModel.activeTab {
+                ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
+                    .padding(.horizontal, 18)
+            }
+
             HStack(spacing: AeroSpacing.sm) {
                 AddressBar(viewModel: viewModel)
 
@@ -42,30 +57,23 @@ struct BottomBrowserChromeView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color(UIColor.label))
                             .frame(width: 38, height: 38)
-                            .background(.thinMaterial, in: Circle())
+                            .liquidGlassBackground(in: Circle())
                     }
                     .buttonStyle(.plain)
                     .transition(.chromeBlurReplace)
                 }
             }
-            .padding(.horizontal, AeroSpacing.md)
-            .padding(.top, viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty ? 0 : AeroSpacing.md)
 
             if !viewModel.isAddressBarFocused {
                 ToolbarView(viewModel: viewModel)
-                    .padding(.horizontal, AeroSpacing.md)
                     .transition(.chromeBlurReplace)
             }
         }
-        .padding(.bottom, AeroSpacing.sm)
+        .padding(.horizontal, AeroSpacing.md)
+        .padding(.vertical, AeroSpacing.md)
+        .dockGlassContainer()
+        .padding(.horizontal, AeroSpacing.md)
         .gesture(openTabsDragGesture)
-        .background(
-            Rectangle()
-                .fill(.regularMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        )
-        .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
-        .animation(AeroAnimation.smooth, value: viewModel.wikiSuggestions.isEmpty)
     }
 
     private var openTabsDragGesture: some Gesture {
@@ -89,23 +97,22 @@ private struct CompactAddressPill: View {
         } label: {
             HStack(spacing: AeroSpacing.sm) {
                 Image(systemName: iconName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(iconColor)
 
                 Text(displayText)
-                    .font(.system(.callout, weight: .semibold))
+                    .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(Color(UIColor.label))
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, AeroSpacing.lg)
-            .frame(height: 44)
+            .padding(.horizontal, AeroSpacing.md)
+            .frame(height: 36)
             .liquidGlassBackground(in: Capsule())
             .overlay(
                 Capsule()
-                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.7)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
             )
-            .shadow(color: Color.black.opacity(0.18), radius: 16, y: 5)
+            .shadow(color: Color.black.opacity(0.16), radius: 12, y: 4)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -153,5 +160,18 @@ private extension View {
 #else
         self.background(.ultraThinMaterial, in: shape)
 #endif
+    }
+
+    @ViewBuilder
+    func dockGlassContainer() -> some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        self
+            .padding(.bottom, 0)
+            .background {
+                Color.clear.liquidGlassBackground(in: shape)
+                    .overlay(shape.strokeBorder(Color.white.opacity(0.16), lineWidth: 0.7))
+            }
+            .clipShape(shape)
+            .shadow(color: Color.black.opacity(0.22), radius: 18, y: 8)
     }
 }

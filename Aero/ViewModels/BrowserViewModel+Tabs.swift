@@ -46,4 +46,13 @@ extension BrowserViewModel {
         chromeController.expand()
         syncAddressBarWithActiveTab()
     }
+
+    func closeAllTabs() {
+        withAnimation(AeroAnimation.snappy) {
+            tabManager.closeAllTabs()
+        }
+        chromeController.expand()
+        syncAddressBarWithActiveTab()
+        hideTabGrid()
+    }
 }

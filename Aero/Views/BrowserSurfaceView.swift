@@ -20,14 +20,10 @@ struct BrowserSurfaceView: View {
                     activePage(safeAreaInsets: proxy.safeAreaInsets, width: proxy.size.width)
 
                     VStack(spacing: 0) {
-                        if let tab = viewModel.activeTab {
-                            ProgressBar(
-                                progress: tab.estimatedProgress,
-                                isLoading: tab.isLoading
-                            )
-                        }
-
                         BottomBrowserChromeView(viewModel: viewModel)
+                            .ignoresSafeArea(.container, edges: [.bottom])
+                            .padding(.bottom, 6)
+                            .offset(y: proxy.safeAreaInsets.bottom * 0.55)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
