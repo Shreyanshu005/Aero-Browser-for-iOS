@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import WebKit
 
@@ -29,8 +22,6 @@ final class Tab: Identifiable {
     let createdAt: Date
     var lastAccessedAt: Date
 
-
-
     var webView: WKWebView?
 
     init(url: URL? = nil) {
@@ -40,7 +31,6 @@ final class Tab: Identifiable {
         self.createdAt = Date()
         self.lastAccessedAt = Date()
     }
-
 
     func createWebView() -> WKWebView {
         if let existing = webView {
@@ -59,7 +49,6 @@ final class Tab: Identifiable {
         self.webView = wv
         return wv
     }
-
 
     func captureSnapshot() {
         guard let webView = webView else { return }
