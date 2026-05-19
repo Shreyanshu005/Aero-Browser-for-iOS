@@ -8,14 +8,14 @@ struct BottomBrowserChromeView: View {
         ZStack(alignment: .bottom) {
             if viewModel.chromeMode == .expanded {
                 expandedChrome
-                    .transition(.chromeBlurReplace)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             if viewModel.chromeMode == .compact {
                 CompactAddressPillView(viewModel: viewModel)
                     .frame(maxWidth: 260)
                     .matchedGeometryEffect(id: "address", in: addressTransition)
-                    .transition(.chromeBlurReplace)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(AeroAnimation.smooth, value: viewModel.chromeMode)
@@ -63,7 +63,7 @@ struct BottomBrowserChromeView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, AeroSpacing.md)
         .padding(.top, AeroSpacing.sm)
-        .padding(.bottom, AeroSpacing.lg)
+        .padding(.bottom, AeroSpacing.xl)
         .background {
             if viewModel.isAddressBarFocused {
                 Color(UIColor.systemGray6)

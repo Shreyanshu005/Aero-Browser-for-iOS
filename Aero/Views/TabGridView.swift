@@ -52,7 +52,7 @@ struct TabGridView: View {
 
     private var deck: some View {
         GeometryReader { geo in
-            let cardW = geo.size.width * 0.82
+            let cardW = geo.size.width * 0.78
             let cardH = geo.size.height * 0.98
             let maxOff = max(0, CGFloat(tabs.count - 1) * cardStep)
             let fraction = (offset / cardStep) - floor(offset / cardStep)

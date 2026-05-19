@@ -11,6 +11,8 @@ struct MenuSheet: View {
     @Bindable var viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
 
+    private static let desktopUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"
+
     var body: some View {
         NavigationStack {
             List {
@@ -41,8 +43,12 @@ struct MenuSheet: View {
                             }
                             dismiss()
                         }
-                        menuButton("desktopcomputer", "Desktop Site") {
-                            viewModel.activeTab?.webView?.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"
+                        menuButton(desktopToggleIcon, desktopToggleTitle) {
+                            if isDesktopSiteEnabled {
+                                viewModel.activeTab?.webView?.customUserAgent = nil
+                            } else {
+                                viewModel.activeTab?.webView?.customUserAgent = Self.desktopUserAgent
+                            }
                             viewModel.reload()
                             dismiss()
                         }
@@ -97,6 +103,18 @@ struct MenuSheet: View {
         }
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+    }
+
+    private var isDesktopSiteEnabled: Bool {
+        viewModel.activeTab?.webView?.customUserAgent == Self.desktopUserAgent
+    }
+
+    private var desktopToggleTitle: String {
+        isDesktopSiteEnabled ? "Mobile Site" : "Desktop Site"
+    }
+
+    private var desktopToggleIcon: String {
+        isDesktopSiteEnabled ? "iphone" : "desktopcomputer"
     }
 
     @ViewBuilder

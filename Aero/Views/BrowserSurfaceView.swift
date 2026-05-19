@@ -3,6 +3,12 @@ import SwiftUI
 struct BrowserSurfaceView: View {
     @Bindable var viewModel: BrowserViewModel
     @StateObject private var keyboard = KeyboardObserver()
+    @State private var edgeSwipeIndicator: EdgeSwipeIndicator? = nil
+
+    private enum EdgeSwipeIndicator {
+        case back
+        case forward
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -20,6 +26,12 @@ struct BrowserSurfaceView: View {
 
                     activePage(safeAreaInsets: proxy.safeAreaInsets, width: proxy.size.width)
                         .simultaneousGesture(backForwardEdgeSwipeGesture(viewWidth: proxy.size.width))
+
+                    if let indicator = edgeSwipeIndicator {
+                        edgeSwipeIndicatorView(indicator)
+                            .transition(.opacity)
+                            .allowsHitTesting(false)
+                    }
 
                     if viewModel.isAddressBarFocused {
                         SearchSuggestionsOverlayView(viewModel: viewModel)
@@ -72,7 +84,28 @@ struct BrowserSurfaceView: View {
 
     private func backForwardEdgeSwipeGesture(viewWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 24, coordinateSpace: .local)
+            .onChanged { v in
+                guard viewModel.isAddressBarFocused == false,
+                      viewModel.showFindInPage == false,
+                      viewModel.isShowingTabGrid == false,
+                      viewModel.isTabSwipeActive == false else { return }
+
+                let edgeWidth: CGFloat = 22
+                guard v.startLocation.x <= edgeWidth || v.startLocation.x >= (viewWidth - edgeWidth) else { return }
+
+                let dx = v.translation.width
+                let dy = v.translation.height
+                guard abs(dx) > 12, abs(dx) > abs(dy) * 2.0 else { return }
+
+                withAnimation(.easeOut(duration: 0.12)) {
+                    edgeSwipeIndicator = dx > 0 ? .back : .forward
+                }
+            }
             .onEnded { v in
+                defer {
+                    withAnimation(.easeOut(duration: 0.12)) { edgeSwipeIndicator = nil }
+                }
+
                 guard viewModel.isAddressBarFocused == false,
                       viewModel.showFindInPage == false,
                       viewModel.isShowingTabGrid == false,
@@ -95,6 +128,30 @@ struct BrowserSurfaceView: View {
                     viewModel.goForward()
                 }
             }
+    }
+
+    @ViewBuilder
+    private func edgeSwipeIndicatorView(_ indicator: EdgeSwipeIndicator) -> some View {
+        HStack {
+            if indicator == .back {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(14)
+                    .background(.black.opacity(0.35), in: Circle())
+                    .padding(.leading, 18)
+                Spacer()
+            } else {
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(14)
+                    .background(.black.opacity(0.35), in: Circle())
+                    .padding(.trailing, 18)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     @ViewBuilder

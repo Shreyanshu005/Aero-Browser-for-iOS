@@ -8,17 +8,18 @@ struct SearchSuggestionsListView: View {
             ForEach(viewModel.searchSuggestions, id: \.self) { suggestion in
                 HStack(spacing: AeroSpacing.md) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.65))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.6))
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         viewModel.navigateToSearchSuggestion(suggestion)
                     } label: {
                         Text(suggestion)
-                            .font(.system(.body, weight: .semibold))
+                            .font(.system(.body, weight: .medium))
                             .foregroundStyle(.white)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                     }
@@ -29,22 +30,20 @@ struct SearchSuggestionsListView: View {
                         viewModel.fillAddressBar(with: suggestion)
                     } label: {
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(0.8))
                             .frame(width: 34, height: 34)
-                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
                 .contentShape(Rectangle())
 
                 if suggestion != viewModel.searchSuggestions.last {
                     Divider()
-                        .overlay(Color.white.opacity(0.12))
+                        .overlay(Color.white.opacity(0.14))
                 }
             }
         }
     }
 }
-

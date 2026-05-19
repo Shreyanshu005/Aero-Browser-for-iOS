@@ -14,9 +14,7 @@ struct AddressBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: iconName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(iconColor)
+            leadingAccessory
 
             if viewModel.isAddressBarFocused {
                 SelectableTextField(
@@ -29,11 +27,19 @@ struct AddressBar: View {
                 )
                 .frame(height: 22)
             } else {
-                Text(displayText)
-                    .font(.system(.body, weight: .medium))
-                    .foregroundStyle(displayTextColor)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                HStack(spacing: 6) {
+                    if viewModel.activeTab?.isSecure == true {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AeroColor.secure)
+                    }
+
+                    Text(displayText)
+                        .font(.system(.body, weight: .medium))
+                        .foregroundStyle(displayTextColor)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
 
             trailingButton
@@ -128,19 +134,39 @@ struct AddressBar: View {
         return "Search or enter URL"
     }
 
+    @ViewBuilder
+    private var leadingAccessory: some View {
+        if viewModel.isAddressBarFocused {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color(UIColor.secondaryLabel))
+        } else {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                shareCurrentPage()
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(UIColor.secondaryLabel))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.activeTab?.url == nil)
+            .opacity(viewModel.activeTab?.url == nil ? 0.35 : 1.0)
+        }
+    }
+
     private var displayTextColor: Color {
         viewModel.activeTab?.url != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
     }
 
-    private var iconName: String {
-        if viewModel.isAddressBarFocused { return "magnifyingglass" }
-        if viewModel.activeTab?.isSecure == true { return "lock.fill" }
-        if viewModel.activeTab?.url != nil { return "globe" }
-        return "magnifyingglass"
-    }
-
-    private var iconColor: Color {
-        if viewModel.activeTab?.isSecure == true { return .green }
-        return Color(UIColor.secondaryLabel)
+    private func shareCurrentPage() {
+        guard let url = viewModel.shareURL() else { return }
+        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            root.present(vc, animated: true)
+        }
     }
 }
