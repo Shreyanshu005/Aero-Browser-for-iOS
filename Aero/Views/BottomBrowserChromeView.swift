@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BottomBrowserChromeView: View {
     @Bindable var viewModel: BrowserViewModel
+    @Namespace private var addressTransition
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -11,9 +12,9 @@ struct BottomBrowserChromeView: View {
             }
 
             if viewModel.chromeMode == .compact {
-                CompactAddressPill(viewModel: viewModel)
+                CompactAddressPillView(viewModel: viewModel)
                     .frame(maxWidth: 260)
-                    .padding(.bottom, 2)
+                    .matchedGeometryEffect(id: "address", in: addressTransition)
                     .transition(.chromeBlurReplace)
             }
         }
@@ -22,42 +23,32 @@ struct BottomBrowserChromeView: View {
 
     private var expandedChrome: some View {
         VStack(spacing: AeroSpacing.sm) {
-            if viewModel.isAddressBarFocused && !viewModel.wikiSuggestions.isEmpty {
-                WikiSuggestionsDropdown(suggestions: viewModel.wikiSuggestions) { suggestion in
-                    viewModel.navigateToWikiSuggestion(suggestion)
-                }
-                .padding(.horizontal, AeroSpacing.md)
-                .transition(.chromeBlurReplace)
-            }
-
-            dockContent
+            bottomBar
                 .transition(.chromeBlurReplace)
         }
-        .padding(.bottom, 2)
         .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
-        .animation(AeroAnimation.smooth, value: viewModel.wikiSuggestions.isEmpty)
+        .animation(AeroAnimation.smooth, value: viewModel.searchSuggestions.isEmpty)
     }
 
-    private var dockContent: some View {
+    private var bottomBar: some View {
         VStack(spacing: AeroSpacing.sm) {
             if let tab = viewModel.activeTab {
                 ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
-                    .padding(.horizontal, 18)
             }
 
             HStack(spacing: AeroSpacing.sm) {
                 AddressBar(viewModel: viewModel)
+                    .matchedGeometryEffect(id: "address", in: addressTransition)
 
                 if viewModel.isAddressBarFocused {
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         viewModel.dismissSearchPresentation()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
+                        Text("Cancel")
+                            .font(.system(.body, weight: .semibold))
                             .foregroundStyle(Color(UIColor.label))
-                            .frame(width: 38, height: 38)
-                            .liquidGlassBackground(in: Circle())
+                            .frame(height: 38)
                     }
                     .buttonStyle(.plain)
                     .transition(.chromeBlurReplace)
@@ -69,10 +60,21 @@ struct BottomBrowserChromeView: View {
                     .transition(.chromeBlurReplace)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, AeroSpacing.md)
-        .padding(.vertical, AeroSpacing.md)
-        .dockGlassContainer()
-        .padding(.horizontal, AeroSpacing.md)
+        .padding(.top, AeroSpacing.sm)
+        .padding(.bottom, AeroSpacing.lg)
+        .background {
+            if viewModel.isAddressBarFocused {
+                Color(UIColor.systemGray6)
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+            }
+        }
+        .overlay(alignment: .top) {
+            Divider()
+                .opacity(0.35)
+        }
         .gesture(openTabsDragGesture)
     }
 
@@ -84,67 +86,6 @@ struct BottomBrowserChromeView: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 viewModel.showTabGrid()
             }
-    }
-}
-
-private struct CompactAddressPill: View {
-    @Bindable var viewModel: BrowserViewModel
-
-    var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            viewModel.expandChromeForInteraction(focusAddressBar: true)
-        } label: {
-            HStack(spacing: AeroSpacing.sm) {
-                Image(systemName: iconName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(iconColor)
-
-                Text(displayText)
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Color(UIColor.label))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, AeroSpacing.md)
-            .frame(height: 36)
-            .liquidGlassBackground(in: Capsule())
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
-            )
-            .shadow(color: Color.black.opacity(0.16), radius: 12, y: 4)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .gesture(openTabsDragGesture)
-    }
-
-    private var openTabsDragGesture: some Gesture {
-        DragGesture(minimumDistance: 18)
-            .onEnded { value in
-                guard value.translation.height < -56,
-                      abs(value.translation.height) > abs(value.translation.width) else { return }
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.showTabGrid()
-            }
-    }
-
-    private var displayText: String {
-        if let url = viewModel.activeTab?.url {
-            return url.displayHost ?? viewModel.activeTab?.displayTitle ?? url.absoluteString
-        }
-        return "Search or enter URL"
-    }
-
-    private var iconName: String {
-        if viewModel.activeTab?.isSecure == true { return "lock.fill" }
-        if viewModel.activeTab?.url != nil { return "globe" }
-        return "magnifyingglass"
-    }
-
-    private var iconColor: Color {
-        if viewModel.activeTab?.isSecure == true { return AeroColor.secure }
-        return Color(UIColor.secondaryLabel)
     }
 }
 
@@ -160,18 +101,5 @@ private extension View {
 #else
         self.background(.ultraThinMaterial, in: shape)
 #endif
-    }
-
-    @ViewBuilder
-    func dockGlassContainer() -> some View {
-        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-        self
-            .padding(.bottom, 0)
-            .background {
-                Color.clear.liquidGlassBackground(in: shape)
-                    .overlay(shape.strokeBorder(Color.white.opacity(0.16), lineWidth: 0.7))
-            }
-            .clipShape(shape)
-            .shadow(color: Color.black.opacity(0.22), radius: 18, y: 8)
     }
 }

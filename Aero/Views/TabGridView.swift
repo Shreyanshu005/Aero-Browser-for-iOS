@@ -26,19 +26,24 @@ struct TabGridView: View {
     var body: some View {
         ZStack {
             background
-            VStack(spacing: 0) {
-                topControls
-                    .opacity(appeared ? 1 : 0)
-                    .offset(y: appeared ? 0 : -10)
-                    .padding(.top, 14)
-                Spacer()
-                deck.opacity(appeared ? 1 : 0)
-                Spacer()
-                bottomControls
-                    .opacity(appeared ? 1 : 0)
-                    .offset(y: appeared ? 0 : 30)
-                    .padding(.bottom, 32)
-            }
+
+            deck
+                .opacity(appeared ? 1 : 0)
+                .padding(.top, 72)
+                .padding(.bottom, 96)
+
+            topControls
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : -10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, 14)
+
+            bottomControls
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 30)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 32)
+                .ignoresSafeArea(.container, edges: [.bottom])
         }
         .onAppear {
             withAnimation(.spring(duration: 0.45, bounce: 0.12)) { appeared = true }
@@ -47,8 +52,8 @@ struct TabGridView: View {
 
     private var deck: some View {
         GeometryReader { geo in
-            let cardW = geo.size.width * 0.78
-            let cardH = geo.size.height * 0.85
+            let cardW = geo.size.width * 0.82
+            let cardH = geo.size.height * 0.98
             let maxOff = max(0, CGFloat(tabs.count - 1) * cardStep)
             let fraction = (offset / cardStep) - floor(offset / cardStep)
 
@@ -104,8 +109,7 @@ struct TabGridView: View {
                     )
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.top, geo.size.height * 0.06)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .contentShape(Rectangle())
             .simultaneousGesture(horizontalPagingGesture(maxOff: maxOff))
             .onAppear {

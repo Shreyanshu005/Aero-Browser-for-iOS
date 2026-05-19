@@ -63,8 +63,9 @@ struct TabCardView: View {
             // Already have a screenshot — show it
             Image(uiImage: snapshot)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
-                .clipped()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
         } else if let webView = tab.webView {
             // Live WebView exists — render it scaled down
             TabWebViewSnapshot(webView: webView)

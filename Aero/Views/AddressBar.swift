@@ -9,7 +9,6 @@ import SwiftUI
 
 struct AddressBar: View {
     @Bindable var viewModel: BrowserViewModel
-    @FocusState private var isFocused: Bool
 
     @State private var isTabSwipeGestureActive = false
 
@@ -23,7 +22,7 @@ struct AddressBar: View {
                 SelectableTextField(
                     placeholder: "Search or enter URL",
                     text: $viewModel.addressBarText,
-                    isFirstResponder: $isFocused,
+                    isFirstResponder: $viewModel.isAddressBarFocused,
                     selectAllOnFocus: true,
                     keyboardType: .webSearch,
                     onSubmit: { viewModel.submitAddressBar() }
@@ -37,19 +36,7 @@ struct AddressBar: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            if viewModel.activeTab?.isLoading == true {
-                Button { viewModel.stopLoading() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-            } else if viewModel.activeTab?.url != nil {
-                Button { viewModel.reload() } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
+            trailingButton
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -97,11 +84,40 @@ struct AddressBar: View {
                 }
         )
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
-            isFocused = newValue
-            if !newValue { viewModel.clearWikiSuggestions() }
+            if !newValue { viewModel.clearSearchSuggestions() }
         }
         .onChange(of: viewModel.addressBarText) { _, newText in
-            viewModel.fetchWikiSuggestions(for: newText)
+            viewModel.fetchSearchSuggestions(for: newText)
+        }
+    }
+
+    @ViewBuilder
+    private var trailingButton: some View {
+        if viewModel.isAddressBarFocused {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                viewModel.addressBarText = ""
+                viewModel.clearSearchSuggestions()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(UIColor.tertiaryLabel))
+            }
+            .buttonStyle(.plain)
+            .opacity(viewModel.addressBarText.isEmpty ? 0 : 1)
+            .disabled(viewModel.addressBarText.isEmpty)
+        } else if viewModel.activeTab?.isLoading == true {
+            Button { viewModel.stopLoading() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+        } else if viewModel.activeTab?.url != nil {
+            Button { viewModel.reload() } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

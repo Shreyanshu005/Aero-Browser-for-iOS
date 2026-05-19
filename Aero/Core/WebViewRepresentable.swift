@@ -45,6 +45,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     private func configureScrollInsets(for webView: WKWebView) {
         let scrollView = webView.scrollView
         let oldTopInset = scrollView.contentInset.top
+        let oldBottomInset = scrollView.contentInset.bottom
         let oldVisibleOffset = scrollView.contentOffset.y + oldTopInset
 
         let topInset: CGFloat = {
@@ -54,14 +55,12 @@ struct WebViewRepresentable: UIViewRepresentable {
             return 0
         }()
 
-        let bottomInset: CGFloat
-        if isAddressBarFocused {
-            bottomInset = BrowserChromeLayout.focusedBottomInset
-        } else {
-            bottomInset = chromeMode == .compact
+        let bottomInset: CGFloat = {
+            if isAddressBarFocused { return BrowserChromeLayout.focusedBottomInset }
+            return chromeMode == .compact
                 ? BrowserChromeLayout.compactBottomInset
                 : BrowserChromeLayout.expandedBottomInset
-        }
+        }()
 
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.contentInset.top = topInset
@@ -69,7 +68,8 @@ struct WebViewRepresentable: UIViewRepresentable {
         scrollView.scrollIndicatorInsets.top = topInset
         scrollView.scrollIndicatorInsets.bottom = bottomInset
 
-        guard abs(oldTopInset - topInset) > 0.5 else { return }
+        // Preserve visible offset when either top or bottom inset changes.
+        guard abs(oldTopInset - topInset) > 0.5 || abs(oldBottomInset - bottomInset) > 0.5 else { return }
 
         let minOffsetY = -topInset
         let preservedOffsetY = max(minOffsetY, oldVisibleOffset - topInset)

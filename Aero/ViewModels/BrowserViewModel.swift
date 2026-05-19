@@ -11,8 +11,8 @@ import WebKit
 @Observable
 final class BrowserViewModel {
 
-    var wikiSuggestions: [WikiSuggestion] = []
-    var wikiTask: Task<Void, Never>?
+    var searchSuggestions: [String] = []
+    var suggestionsTask: Task<Void, Never>?
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -80,6 +80,7 @@ final class BrowserViewModel {
 
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
+        clearSearchSuggestions()
         chromeController.expand()
     }
 

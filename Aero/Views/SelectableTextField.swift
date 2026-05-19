@@ -20,6 +20,10 @@ struct SelectableTextField: UIViewRepresentable {
                 DispatchQueue.main.async { textField.selectAll(nil) }
             }
         }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            parent.isFirstResponder = false
+        }
     }
 
     let placeholder: String
@@ -47,8 +51,14 @@ struct SelectableTextField: UIViewRepresentable {
     func updateUIView(_ uiView: UITextField, context: Context) {
         if uiView.text != text { uiView.text = text }
 
-        if isFirstResponder, uiView.window != nil, !uiView.isFirstResponder {
-            uiView.becomeFirstResponder()
+        if isFirstResponder, !uiView.isFirstResponder {
+            // The text field may not yet be in a window during the same update cycle
+            // in which it is inserted. Dispatching ensures the keyboard opens on first tap.
+            DispatchQueue.main.async {
+                if self.isFirstResponder, !uiView.isFirstResponder {
+                    uiView.becomeFirstResponder()
+                }
+            }
         } else if !isFirstResponder, uiView.isFirstResponder {
             uiView.resignFirstResponder()
         }
