@@ -6,6 +6,7 @@
 
 
 import SwiftUI
+import UIKit
 
 struct AddressBar: View {
     @Bindable var viewModel: BrowserViewModel
@@ -95,6 +96,11 @@ struct AddressBar: View {
         .onChange(of: viewModel.addressBarText) { _, newText in
             viewModel.fetchSearchSuggestions(for: newText)
         }
+        .onAppear {
+            if viewModel.isAddressBarFocused {
+                viewModel.fetchSearchSuggestions(for: viewModel.addressBarText)
+            }
+        }
     }
 
     @ViewBuilder
@@ -163,10 +169,6 @@ struct AddressBar: View {
 
     private func shareCurrentPage() {
         guard let url = viewModel.shareURL() else { return }
-        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
-        }
+        SharePresenter.present(items: [url])
     }
 }

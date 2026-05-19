@@ -6,6 +6,7 @@
 
 
 import SwiftUI
+import UIKit
 
 struct MenuSheet: View {
     @Bindable var viewModel: BrowserViewModel
@@ -24,6 +25,12 @@ struct MenuSheet: View {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                 viewModel.showFindInPage = true
                             }
+                        }
+                        menuButton("safari", "Open in Safari") {
+                            if let url = viewModel.activeTab?.url {
+                                UIApplication.shared.open(url)
+                            }
+                            dismiss()
                         }
                         menuButton("doc.plaintext", "Reader Mode") {
                             dismiss()

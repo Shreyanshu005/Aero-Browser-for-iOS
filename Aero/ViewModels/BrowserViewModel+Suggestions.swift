@@ -5,10 +5,19 @@ extension BrowserViewModel {
         suggestionsTask?.cancel()
 
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedQuery.isEmpty, isAddressBarFocused else {
+        guard isAddressBarFocused else {
             searchSuggestions = []
             return
         }
+
+        // Empty query: show recents.
+        guard !normalizedQuery.isEmpty else {
+            searchSuggestions = recentSearches
+            return
+        }
+
+        let recentMatches = SearchSuggestionComposer.recentMatches(query: normalizedQuery, recentSearches: recentSearches)
+        searchSuggestions = recentMatches
 
         // If the user is typing, keep the overlay alive with the last results while we debounce.
         suggestionsTask = Task {
@@ -19,7 +28,11 @@ extension BrowserViewModel {
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
-                self.searchSuggestions = results
+                self.searchSuggestions = SearchSuggestionComposer.compose(
+                    query: normalizedQuery,
+                    recentSearches: self.recentSearches,
+                    googleSuggestions: results
+                )
             }
         }
     }

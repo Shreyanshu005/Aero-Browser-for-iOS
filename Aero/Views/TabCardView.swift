@@ -1,7 +1,6 @@
 import SwiftUI
 import WebKit
 
-// Lightweight wrapper to display a WKWebView snapshot in card previews
 private struct TabWebViewSnapshot: UIViewRepresentable {
     let webView: WKWebView
 
@@ -60,19 +59,16 @@ struct TabCardView: View {
     @ViewBuilder
     private var snapshotArea: some View {
         if let snapshot = tab.snapshot {
-            // Already have a screenshot — show it
             Image(uiImage: snapshot)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black)
         } else if let webView = tab.webView {
-            // Live WebView exists — render it scaled down
             TabWebViewSnapshot(webView: webView)
                 .clipped()
-                .allowsHitTesting(false) // disable interaction in card
+                .allowsHitTesting(false)
         } else {
-            // Brand new tab, no webView yet
             ZStack {
                 Color.black
                 VStack(spacing: 10) {

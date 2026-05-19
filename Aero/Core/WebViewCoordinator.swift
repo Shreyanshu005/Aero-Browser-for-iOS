@@ -9,15 +9,24 @@ import UIKit
 import WebKit
 import Combine
 
-final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
+final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate, WKDownloadDelegate {
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
+    let downloadManager: DownloadManager
     private var observations: [NSKeyValueObservation] = []
     private weak var refreshControl: UIRefreshControl?
+    private var downloadMap: [ObjectIdentifier: UUID] = [:]
+    private var downloadProgressObservers: [ObjectIdentifier: NSKeyValueObservation] = [:]
+    private var downloadDestinations: [ObjectIdentifier: URL] = [:]
 
-    init(tab: Tab, onNavigationEvent: @escaping (NavigationEvent) -> Void) {
+    init(
+        tab: Tab,
+        onNavigationEvent: @escaping (NavigationEvent) -> Void,
+        downloadManager: DownloadManager
+    ) {
         self.tab = tab
         self.onNavigationEvent = onNavigationEvent
+        self.downloadManager = downloadManager
         super.init()
     }
 
@@ -232,8 +241,136 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if #available(iOS 14.5, *) {
+            if navigationAction.shouldPerformDownload {
+                decisionHandler(.download)
+                return
+            }
+        }
+        decisionHandler(.allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        guard let url = navigationResponse.response.url else {
+            decisionHandler(.allow)
+            return
+        }
+
+        if let http = navigationResponse.response as? HTTPURLResponse,
+           let disposition = http.value(forHTTPHeaderField: "Content-Disposition")?.lowercased(),
+           disposition.contains("attachment") {
+            if #available(iOS 14.5, *) {
+                decisionHandler(.download)
+                return
+            } else {
+                downloadManager.startDownload(url: url, suggestedFilename: http.suggestedFilename)
+                decisionHandler(.cancel)
+                return
+            }
+        }
+
+        if navigationResponse.canShowMIMEType == false {
+            if #available(iOS 14.5, *) {
+                decisionHandler(.download)
+                return
+            } else {
+                downloadManager.startDownload(url: url, suggestedFilename: navigationResponse.response.suggestedFilename)
+                decisionHandler(.cancel)
+                return
+            }
+        }
 
         decisionHandler(.allow)
+    }
+
+    // MARK: - WKDownload bridge
+
+    @available(iOS 14.5, *)
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        attach(download: download, sourceURL: navigationAction.request.url)
+    }
+
+    @available(iOS 14.5, *)
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        attach(download: download, sourceURL: navigationResponse.response.url)
+    }
+
+    @available(iOS 14.5, *)
+    private func attach(download: WKDownload, sourceURL: URL?) {
+        download.delegate = self
+
+        let key = ObjectIdentifier(download)
+        if downloadMap[key] == nil {
+            let url = sourceURL ?? URL(string: "about:blank")!
+            let id = downloadManager.startWebKitDownload(
+                sourceURL: url,
+                filename: url.lastPathComponent.isEmpty ? "Download" : url.lastPathComponent
+            )
+            downloadMap[key] = id
+
+            downloadProgressObservers[key] = download.progress.observe(\.fractionCompleted, options: [.new]) { [weak self] _, change in
+                guard let self, let fraction = change.newValue else { return }
+                guard let mappedID = self.downloadMap[key] else { return }
+                self.downloadManager.updateWebKitDownloadProgress(id: mappedID, progress: fraction)
+            }
+        }
+    }
+
+    @available(iOS 14.5, *)
+    func download(
+        _ download: WKDownload,
+        decideDestinationUsing response: URLResponse,
+        suggestedFilename: String,
+        completionHandler: @escaping (URL?) -> Void
+    ) {
+        let downloadsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Downloads", isDirectory: true)
+        try? FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
+        let destination = downloadsDir.appendingPathComponent(suggestedFilename)
+        // Avoid failures when a file with the same name already exists.
+        try? FileManager.default.removeItem(at: destination)
+        downloadDestinations[ObjectIdentifier(download)] = destination
+        completionHandler(destination)
+
+        let key = ObjectIdentifier(download)
+        if let id = downloadMap[key],
+           let index = downloadManager.downloads.firstIndex(where: { $0.id == id }) {
+            downloadManager.downloads[index].filename = suggestedFilename
+        }
+    }
+
+    @available(iOS 14.5, *)
+    func downloadDidFinish(_ download: WKDownload) {
+        let key = ObjectIdentifier(download)
+        defer {
+            downloadMap.removeValue(forKey: key)
+            downloadProgressObservers.removeValue(forKey: key)
+            downloadDestinations.removeValue(forKey: key)
+        }
+
+        guard let id = downloadMap[key],
+              let fileURL = downloadDestinations[key] else {
+            return
+        }
+        downloadManager.completeWebKitDownload(id: id, localURL: fileURL)
+    }
+
+    @available(iOS 14.5, *)
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        let key = ObjectIdentifier(download)
+        defer {
+            downloadMap.removeValue(forKey: key)
+            downloadProgressObservers.removeValue(forKey: key)
+            downloadDestinations.removeValue(forKey: key)
+        }
+
+        if let id = downloadMap[key] {
+            downloadManager.failWebKitDownload(id: id, error: error)
+        }
     }
 
 

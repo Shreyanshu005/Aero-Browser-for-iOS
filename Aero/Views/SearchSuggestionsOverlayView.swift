@@ -11,9 +11,7 @@ struct SearchSuggestionsOverlayView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if viewModel.addressBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    EmptyView()
-                } else if viewModel.searchSuggestions.isEmpty {
+                if viewModel.searchSuggestions.isEmpty {
                     EmptyView()
                 } else {
                     ScrollView {

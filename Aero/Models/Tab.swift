@@ -52,11 +52,9 @@ final class Tab: Identifiable {
         return wv
     }
 
-    // ← Fixed: no snapshotWidth cap, full resolution
     func captureSnapshot() {
         guard let webView = webView else { return }
         let config = WKSnapshotConfiguration()
-        // removed snapshotWidth — was forcing tiny 200pt image
 
         webView.takeSnapshot(with: config) { [weak self] image, _ in
             DispatchQueue.main.async {

@@ -7,7 +7,7 @@ struct SearchSuggestionsListView: View {
         VStack(spacing: 0) {
             ForEach(viewModel.searchSuggestions, id: \.self) { suggestion in
                 HStack(spacing: AeroSpacing.md) {
-                    Image(systemName: "magnifyingglass")
+                    Image(systemName: iconName(for: suggestion))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.6))
 
@@ -45,5 +45,11 @@ struct SearchSuggestionsListView: View {
                 }
             }
         }
+    }
+
+    private func iconName(for suggestion: String) -> String {
+        viewModel.recentSearches.contains(where: { $0.caseInsensitiveCompare(suggestion) == .orderedSame })
+            ? "clock"
+            : "magnifyingglass"
     }
 }

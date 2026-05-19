@@ -33,6 +33,18 @@ struct BrowserSurfaceView: View {
                             .allowsHitTesting(false)
                     }
 
+                    if let toast = viewModel.downloadManager.activeToast {
+                        VStack {
+                            Spacer()
+                            DownloadToastView(filename: toast.filename) {
+                                viewModel.showDownloads = true
+                            }
+                            .padding(.bottom, 10)
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .animation(.easeOut(duration: 0.2), value: toast)
+                    }
+
                     if viewModel.isAddressBarFocused {
                         SearchSuggestionsOverlayView(viewModel: viewModel)
                             .transition(.opacity)
@@ -174,7 +186,8 @@ struct BrowserSurfaceView: View {
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
-                            onNavigationEvent: viewModel.handleNavigationEvent
+                            onNavigationEvent: viewModel.handleNavigationEvent,
+                            downloadManager: viewModel.downloadManager
                         )
                         .id(targetTab.id)
                         .offset(x: incomingStartX + dx)
@@ -184,7 +197,8 @@ struct BrowserSurfaceView: View {
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
-                            onNavigationEvent: viewModel.handleNavigationEvent
+                            onNavigationEvent: viewModel.handleNavigationEvent,
+                            downloadManager: viewModel.downloadManager
                         )
                         .id(tab.id)
                         .offset(x: dx)
@@ -194,7 +208,8 @@ struct BrowserSurfaceView: View {
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
-                            onNavigationEvent: viewModel.handleNavigationEvent
+                            onNavigationEvent: viewModel.handleNavigationEvent,
+                            downloadManager: viewModel.downloadManager
                         )
                         .id(tab.id)
                         .transition(.opacity)

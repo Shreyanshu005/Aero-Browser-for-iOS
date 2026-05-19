@@ -13,6 +13,7 @@ final class BrowserViewModel {
 
     var searchSuggestions: [String] = []
     var suggestionsTask: Task<Void, Never>?
+    var recentSearches: [String] = UserDefaults.standard.stringArray(forKey: "recent_searches") ?? []
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -74,6 +75,7 @@ final class BrowserViewModel {
         case .url(let directURL):
             url = directURL
         case .search(let query):
+            addRecentSearch(query)
             guard let searchURL = searchEngine.searchURL(for: query) else { return }
             url = searchURL
         }
@@ -82,6 +84,18 @@ final class BrowserViewModel {
         isAddressBarFocused = false
         clearSearchSuggestions()
         chromeController.expand()
+    }
+
+    private func addRecentSearch(_ query: String) {
+        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+
+        recentSearches.removeAll { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
+        recentSearches.insert(cleaned, at: 0)
+        if recentSearches.count > 20 {
+            recentSearches = Array(recentSearches.prefix(20))
+        }
+        UserDefaults.standard.set(recentSearches, forKey: "recent_searches")
     }
 
 

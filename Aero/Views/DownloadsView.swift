@@ -6,10 +6,13 @@
 
 
 import SwiftUI
+import UIKit
 
 struct DownloadsView: View {
     @Bindable var viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedDownload: DownloadItem?
+    @State private var showActions = false
 
     var body: some View {
         NavigationStack {
@@ -38,6 +41,12 @@ struct DownloadsView: View {
                                             Text("Failed")
                                                 .font(.caption)
                                                 .foregroundStyle(.red)
+                                            if let msg = item.errorMessage, !msg.isEmpty {
+                                                Text(msg)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                                    .lineLimit(1)
+                                            }
                                         }
                                     }
                                 } icon: {
@@ -53,11 +62,23 @@ struct DownloadsView: View {
                                     }
                                 }
                             }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                guard item.state == .completed, item.localURL != nil else { return }
+                                selectedDownload = item
+                                showActions = true
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Downloads")
+            .confirmationDialog("Download", isPresented: $showActions, titleVisibility: .visible) {
+                if let url = selectedDownload?.localURL {
+                    Button("Open") { openFile(url) }
+                    Button("Share…") { shareFile(url) }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
@@ -71,5 +92,13 @@ struct DownloadsView: View {
                 }
             }
         }
+    }
+
+    private func openFile(_ url: URL) {
+        UIApplication.shared.open(url)
+    }
+
+    private func shareFile(_ url: URL) {
+        SharePresenter.present(items: [url])
     }
 }

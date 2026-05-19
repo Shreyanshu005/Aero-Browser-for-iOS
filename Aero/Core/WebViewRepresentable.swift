@@ -7,6 +7,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     let isAddressBarFocused: Bool
     let safeAreaInsets: EdgeInsets
     let onNavigationEvent: (NavigationEvent) -> Void
+    let downloadManager: DownloadManager
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = tab.createWebView()
@@ -39,7 +40,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     func makeCoordinator() -> WebViewCoordinator {
-        WebViewCoordinator(tab: tab, onNavigationEvent: onNavigationEvent)
+        WebViewCoordinator(tab: tab, onNavigationEvent: onNavigationEvent, downloadManager: downloadManager)
     }
 
     private func configureScrollInsets(for webView: WKWebView) {
@@ -68,7 +69,6 @@ struct WebViewRepresentable: UIViewRepresentable {
         scrollView.scrollIndicatorInsets.top = topInset
         scrollView.scrollIndicatorInsets.bottom = bottomInset
 
-        // Preserve visible offset when either top or bottom inset changes.
         guard abs(oldTopInset - topInset) > 0.5 || abs(oldBottomInset - bottomInset) > 0.5 else { return }
 
         let minOffsetY = -topInset

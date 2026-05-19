@@ -101,9 +101,17 @@ struct TabGridView: View {
                             .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                             .allowsHitTesting(depth >= -0.5 && depth < CGFloat(maxCards))
                             .onTapGesture {
-                                guard isFront, !isVerticalInteracting else { return }
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                viewModel.selectTab(tab)
+                                guard !isVerticalInteracting else { return }
+                                if isFront {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    viewModel.selectTab(tab)
+                                } else {
+                                    let target = CGFloat(index) * cardStep
+                                    withAnimation(.interactiveSpring(response: 0.32, dampingFraction: 0.86)) {
+                                        offset = target
+                                    }
+                                    dragStart = target
+                                }
                             }
                             .simultaneousGesture(verticalDismissGesture(for: tab))
                     )
