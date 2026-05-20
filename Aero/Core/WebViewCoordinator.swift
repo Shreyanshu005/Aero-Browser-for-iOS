@@ -9,7 +9,7 @@ import UIKit
 import WebKit
 import Combine
 
-final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate, WKDownloadDelegate {
+final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate, WKDownloadDelegate, WKScriptMessageHandler {
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
     let downloadManager: DownloadManager
@@ -18,6 +18,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     private var downloadMap: [ObjectIdentifier: UUID] = [:]
     private var downloadProgressObservers: [ObjectIdentifier: NSKeyValueObservation] = [:]
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    private let passkeyMessageName = "passkeyRequested"
 
     init(
         tab: Tab,
@@ -41,6 +42,8 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         observations.removeAll()
         webView.scrollView.delegate = self
         webView.scrollView.alwaysBounceVertical = true
+
+        installPasskeyDetectionIfNeeded(into: webView)
 
         if webView.scrollView.refreshControl == nil {
             let rc = UIRefreshControl()
@@ -107,6 +110,37 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         )
     }
 
+    private func installPasskeyDetectionIfNeeded(into webView: WKWebView) {
+        let ucc = webView.configuration.userContentController
+        // Avoid duplicate handlers/scripts.
+        ucc.removeScriptMessageHandler(forName: passkeyMessageName)
+        ucc.add(self, name: passkeyMessageName)
+
+        let source = """
+        (function() {
+          try {
+            if (!window.PublicKeyCredential || !navigator.credentials) return;
+            const handler = function() {
+              try { window.webkit.messageHandlers.\(passkeyMessageName).postMessage({type:'webauthn'}); } catch(e) {}
+            };
+            const origGet = navigator.credentials.get.bind(navigator.credentials);
+            navigator.credentials.get = function(options) {
+              try { if (options && options.publicKey) handler(); } catch(e) {}
+              return origGet(options);
+            };
+            const origCreate = navigator.credentials.create.bind(navigator.credentials);
+            navigator.credentials.create = function(options) {
+              try { if (options && options.publicKey) handler(); } catch(e) {}
+              return origCreate(options);
+            };
+          } catch(e) {}
+        })();
+        """
+        let script = WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        ucc.removeAllUserScripts()
+        ucc.addUserScript(script)
+    }
+
 
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -120,11 +154,65 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         onNavigationEvent(.didFinishLoading)
 
         updateThemeColor(from: webView)
+        fetchFaviconIfNeeded(from: webView)
         refreshControl?.endRefreshing()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.tab.captureSnapshot()
         }
+    }
+
+    private func fetchFaviconIfNeeded(from webView: WKWebView) {
+        guard let url = webView.url, let host = url.host else { return }
+        guard tab.faviconHost?.caseInsensitiveCompare(host) != .orderedSame else { return }
+
+        tab.faviconHost = host
+        tab.favicon = nil
+
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+
+            let iconURL = await self.bestFaviconURL(for: webView, pageURL: url) ?? self.defaultFaviconURL(for: url)
+            guard let iconURL else { return }
+
+            do {
+                let (data, _) = try await URLSession.shared.data(from: iconURL)
+                guard let image = UIImage(data: data) else { return }
+                await MainActor.run {
+                    if self.tab.faviconHost?.caseInsensitiveCompare(host) == .orderedSame {
+                        self.tab.favicon = image
+                    }
+                }
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func defaultFaviconURL(for pageURL: URL) -> URL? {
+        var comps = URLComponents()
+        comps.scheme = pageURL.scheme
+        comps.host = pageURL.host
+        comps.path = "/favicon.ico"
+        return comps.url
+    }
+
+    private func bestFaviconURL(for webView: WKWebView, pageURL: URL) async -> URL? {
+        let js = """
+        (function(){
+          var el = document.querySelector('link[rel~=\"icon\"]') || document.querySelector('link[rel=\"shortcut icon\"]');
+          return el ? el.href : null;
+        })();
+        """
+
+        do {
+            let result = try await webView.evaluateJavaScript(js)
+            if let href = result as? String, let url = URL(string: href) {
+                return url
+            }
+        } catch { }
+
+        return nil
     }
 
     private func updateThemeColor(from webView: WKWebView) {
@@ -395,5 +483,13 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
             viewportHeight: scrollView.bounds.height
         )
         onNavigationEvent(.didScroll(metrics))
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == passkeyMessageName else { return }
+        guard let url = tab.webView?.url else { return }
+        DispatchQueue.main.async {
+            UIApplication.shared.open(url)
+        }
     }
 }

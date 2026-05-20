@@ -19,6 +19,7 @@ final class Tab: Identifiable {
     var isSecure: Bool = false
     var snapshot: UIImage?
     var favicon: UIImage?
+    var faviconHost: String?
     var pageBackgroundColor: UIColor = .systemBackground
     let createdAt: Date
     var lastAccessedAt: Date
@@ -47,6 +48,9 @@ final class Tab: Identifiable {
         wv.allowsBackForwardNavigationGestures = true
         wv.scrollView.contentInsetAdjustmentBehavior = .never
         wv.scrollView.alwaysBounceVertical = true
+        wv.isOpaque = false
+        wv.backgroundColor = .clear
+        wv.scrollView.backgroundColor = .clear
 
         self.webView = wv
         return wv

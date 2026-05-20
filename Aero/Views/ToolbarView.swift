@@ -12,7 +12,7 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            toolbarButton("chevron.left", enabled: viewModel.activeTab?.canGoBack ?? false) {
+            toolbarButton("chevron.left", enabled: (viewModel.activeTab?.canGoBack ?? false) || viewModel.activeTab?.url != nil) {
                 viewModel.goBack()
             }
 

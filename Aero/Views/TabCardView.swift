@@ -14,15 +14,8 @@ struct TabCardView: View {
     private let cardRadius: CGFloat = 28
 
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
-                titleBar
-                    .frame(height: 46)
-                snapshotArea
-                    .frame(width: geo.size.width, height: geo.size.height - 46)
-            }
-        }
-        .background(Color.black)
+        snapshotArea
+        .background(Color(uiColor: tab.pageBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
@@ -31,43 +24,23 @@ struct TabCardView: View {
         .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
     }
 
-    private var titleBar: some View {
-        HStack(spacing: 10) {
-            if let favicon = tab.favicon {
-                Image(uiImage: favicon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 18, height: 18)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            } else {
-                Image(systemName: "globe")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
-                    .frame(width: 18, height: 18)
-            }
-            Text(tab.displayTitle.isEmpty ? "New Tab" : tab.displayTitle)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.8))
-                .lineLimit(1)
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Color.black)
-    }
-
     @ViewBuilder
     private var snapshotArea: some View {
         if let snapshot = tab.snapshot {
-            Image(uiImage: snapshot)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
+            GeometryReader { geo in
+                Image(uiImage: snapshot)
+                    .resizable()
+                    .aspectRatio(geo.size.width / max(geo.size.height, 1), contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
         } else if let webView = tab.webView {
-            TabWebViewSnapshot(webView: webView)
-                .clipped()
-                .allowsHitTesting(false)
+            ZStack {
+                Color(uiColor: tab.pageBackgroundColor)
+                TabWebViewSnapshot(webView: webView)
+                    .clipped()
+                    .allowsHitTesting(false)
+            }
         } else {
             ZStack {
                 Color.black
