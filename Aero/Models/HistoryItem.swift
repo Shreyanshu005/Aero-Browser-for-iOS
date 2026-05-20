@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import Foundation
 
 struct HistoryItem: Identifiable, Codable, Hashable {

@@ -1,14 +1,4 @@
-
-
-
-
-
-
-
-
 import SwiftUI
-
-
 
 enum AeroColor {
 
