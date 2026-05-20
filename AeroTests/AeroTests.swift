@@ -21,6 +21,22 @@ struct AeroTests {
         #expect(controller.mode == .expanded)
     }
 
+    @Test func chromeIgnoresBottomBounceJitter() {
+        var controller = BrowserChromeController()
+
+        controller.handleScroll(WebScrollMetrics(offsetY: 40, contentHeight: 1600, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 138, contentHeight: 1600, viewportHeight: 800))
+
+        #expect(controller.mode == .compact)
+
+        // Simulate bottom bounce where offset changes quickly near the bottom.
+        controller.handleScroll(WebScrollMetrics(offsetY: 798, contentHeight: 800, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 790, contentHeight: 800, viewportHeight: 800))
+        controller.handleScroll(WebScrollMetrics(offsetY: 799, contentHeight: 800, viewportHeight: 800))
+
+        #expect(controller.mode == .compact)
+    }
+
     @Test func chromeDoesNotCollapseBeforeDownwardScrollThreshold() {
         var controller = BrowserChromeController()
 

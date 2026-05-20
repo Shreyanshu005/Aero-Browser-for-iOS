@@ -1,37 +1,53 @@
 import Foundation
 
 extension BrowserViewModel {
-    func fetchWikiSuggestions(for query: String) {
-        wikiTask?.cancel()
-        guard !query.isEmpty, isAddressBarFocused else {
-            wikiSuggestions = []
+    func fetchSearchSuggestions(for query: String) {
+        suggestionsTask?.cancel()
+
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isAddressBarFocused else {
+            searchSuggestions = []
             return
         }
 
-        wikiTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+        // Empty query: show recents.
+        guard !normalizedQuery.isEmpty else {
+            searchSuggestions = recentSearches
+            return
+        }
+
+        let recentMatches = SearchSuggestionComposer.recentMatches(query: normalizedQuery, recentSearches: recentSearches)
+        searchSuggestions = recentMatches
+
+        // If the user is typing, keep the overlay alive with the last results while we debounce.
+        suggestionsTask = Task {
+            try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled else { return }
 
-            let results = await WikipediaService.search(query: query)
+            let results = await GoogleSuggestService.suggestions(query: normalizedQuery)
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
-                self.wikiSuggestions = results
+                self.searchSuggestions = SearchSuggestionComposer.compose(
+                    query: normalizedQuery,
+                    recentSearches: self.recentSearches,
+                    googleSuggestions: results
+                )
             }
         }
     }
 
-    func clearWikiSuggestions() {
-        wikiTask?.cancel()
-        wikiSuggestions = []
+    func clearSearchSuggestions() {
+        suggestionsTask?.cancel()
+        searchSuggestions = []
     }
 
-    func navigateToWikiSuggestion(_ suggestion: WikiSuggestion) {
-        guard let url = suggestion.pageURL else { return }
-        addressBarText = url.absoluteString
-        tabManager.loadInActiveTab(url: url)
-        isAddressBarFocused = false
-        clearWikiSuggestions()
-        chromeController.expand()
+    func navigateToSearchSuggestion(_ suggestion: String) {
+        addressBarText = suggestion
+        submitAddressBar()
+    }
+
+    func fillAddressBar(with suggestion: String) {
+        addressBarText = suggestion
     }
 }

@@ -1,68 +1,85 @@
-
-
-
-
-
-
-
 import SwiftUI
+import WebKit
+
+private struct TabWebViewSnapshot: UIViewRepresentable {
+    let webView: WKWebView
+
+    func makeUIView(context: Context) -> WKWebView { webView }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
 
 struct TabCardView: View {
     let tab: Tab
     let isActive: Bool
-    let onSelect: () -> Void
-    let onClose: () -> Void
+    private let cardRadius: CGFloat = 28
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .topTrailing) {
-                Group {
-                    if let snapshot = tab.snapshot {
-                        Image(uiImage: snapshot)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Color(UIColor.tertiarySystemFill)
-                            .overlay {
-                                Image(systemName: "globe")
-                                    .font(.system(size: 28, weight: .light))
-                                    .foregroundStyle(.tertiary)
-                            }
-                    }
-                }
-                .frame(height: 150)
-                .clipped()
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onClose()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(6)
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                titleBar
+                    .frame(height: 46)
+                snapshotArea
+                    .frame(width: geo.size.width, height: geo.size.height - 46)
             }
-
-            HStack(spacing: 6) {
-                Text(tab.displayTitle)
-                    .font(.caption)
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color(UIColor.secondarySystemBackground))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(
-                    isActive ? Color(UIColor.label) : Color(UIColor.separator),
-                    lineWidth: isActive ? 2.5 : 0.5
-                )
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .strokeBorder(.white.opacity(isActive ? 0.15 : 0.06), lineWidth: 0.5)
         )
-        .onTapGesture { onSelect() }
+        .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+    }
+
+    private var titleBar: some View {
+        HStack(spacing: 10) {
+            if let favicon = tab.favicon {
+                Image(uiImage: favicon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 18)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Image(systemName: "globe")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 18, height: 18)
+            }
+            Text(tab.displayTitle.isEmpty ? "New Tab" : tab.displayTitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
+                .lineLimit(1)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.black)
+    }
+
+    @ViewBuilder
+    private var snapshotArea: some View {
+        if let snapshot = tab.snapshot {
+            Image(uiImage: snapshot)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+        } else if let webView = tab.webView {
+            TabWebViewSnapshot(webView: webView)
+                .clipped()
+                .allowsHitTesting(false)
+        } else {
+            ZStack {
+                Color.black
+                VStack(spacing: 10) {
+                    Image(systemName: "safari")
+                        .font(.system(size: 42, weight: .ultraLight))
+                        .foregroundStyle(.white.opacity(0.18))
+                    Text(tab.url?.host ?? "New Tab")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.25))
+                }
+            }
+        }
     }
 }

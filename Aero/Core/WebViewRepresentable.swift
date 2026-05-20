@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import WebKit
 
@@ -14,6 +7,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     let isAddressBarFocused: Bool
     let safeAreaInsets: EdgeInsets
     let onNavigationEvent: (NavigationEvent) -> Void
+    let downloadManager: DownloadManager
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = tab.createWebView()
@@ -22,6 +16,7 @@ struct WebViewRepresentable: UIViewRepresentable {
 
 
         context.coordinator.observeWebView(webView)
+        configureAppearance(for: webView)
         configureScrollInsets(for: webView)
 
 
@@ -33,6 +28,7 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        configureAppearance(for: webView)
         configureScrollInsets(for: webView)
 
         guard let url = tab.url else { return }
@@ -44,26 +40,28 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
 
     func makeCoordinator() -> WebViewCoordinator {
-        WebViewCoordinator(tab: tab, onNavigationEvent: onNavigationEvent)
+        WebViewCoordinator(tab: tab, onNavigationEvent: onNavigationEvent, downloadManager: downloadManager)
     }
 
     private func configureScrollInsets(for webView: WKWebView) {
         let scrollView = webView.scrollView
         let oldTopInset = scrollView.contentInset.top
+        let oldBottomInset = scrollView.contentInset.bottom
         let oldVisibleOffset = scrollView.contentOffset.y + oldTopInset
 
-        let topInset = chromeMode == .compact && !isAddressBarFocused
-            ? BrowserChromeLayout.compactTopInset
-            : safeAreaInsets.top
+        let topInset: CGFloat = {
+            if chromeMode == .compact && !isAddressBarFocused {
+                return BrowserChromeLayout.compactTopInset
+            }
+            return 0
+        }()
 
-        let bottomInset: CGFloat
-        if isAddressBarFocused {
-            bottomInset = BrowserChromeLayout.focusedBottomInset
-        } else {
-            bottomInset = chromeMode == .compact
+        let bottomInset: CGFloat = {
+            if isAddressBarFocused { return BrowserChromeLayout.focusedBottomInset }
+            return chromeMode == .compact
                 ? BrowserChromeLayout.compactBottomInset
                 : BrowserChromeLayout.expandedBottomInset
-        }
+        }()
 
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.contentInset.top = topInset
@@ -71,7 +69,7 @@ struct WebViewRepresentable: UIViewRepresentable {
         scrollView.scrollIndicatorInsets.top = topInset
         scrollView.scrollIndicatorInsets.bottom = bottomInset
 
-        guard abs(oldTopInset - topInset) > 0.5 else { return }
+        guard abs(oldTopInset - topInset) > 0.5 || abs(oldBottomInset - bottomInset) > 0.5 else { return }
 
         let minOffsetY = -topInset
         let preservedOffsetY = max(minOffsetY, oldVisibleOffset - topInset)
@@ -80,6 +78,15 @@ struct WebViewRepresentable: UIViewRepresentable {
                 CGPoint(x: scrollView.contentOffset.x, y: preservedOffsetY),
                 animated: false
             )
+        }
+    }
+
+    private func configureAppearance(for webView: WKWebView) {
+        let bg = tab.pageBackgroundColor
+        webView.scrollView.backgroundColor = bg
+        webView.backgroundColor = bg
+        if #available(iOS 15.0, *) {
+            webView.underPageBackgroundColor = bg
         }
     }
 }

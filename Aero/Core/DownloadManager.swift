@@ -12,6 +12,9 @@ import Observation
 final class DownloadManager: NSObject {
     var downloads: [DownloadItem] = []
     private var activeTasks: [URLSessionDownloadTask: UUID] = [:]
+    private var activeWebKitDownloads: [UUID: URL] = [:]
+
+    var activeToast: DownloadToast? = nil
 
     @ObservationIgnored
     private var session: URLSession!
@@ -28,10 +31,53 @@ final class DownloadManager: NSObject {
             filename: suggestedFilename ?? url.lastPathComponent
         )
         downloads.insert(item, at: 0)
+        showToast(filename: item.filename)
 
         let task = session.downloadTask(with: url)
         activeTasks[task] = item.id
         task.resume()
+    }
+
+    func startWebKitDownload(sourceURL: URL, filename: String) -> UUID {
+        let item = DownloadItem(url: sourceURL, filename: filename)
+        item.state = .downloading
+        downloads.insert(item, at: 0)
+        activeWebKitDownloads[item.id] = sourceURL
+        showToast(filename: item.filename)
+        return item.id
+    }
+
+    func updateWebKitDownloadProgress(id: UUID, progress: Double) {
+        guard let index = downloads.firstIndex(where: { $0.id == id }) else { return }
+        downloads[index].progress = progress
+        downloads[index].state = .downloading
+    }
+
+    func completeWebKitDownload(id: UUID, localURL: URL) {
+        guard let index = downloads.firstIndex(where: { $0.id == id }) else { return }
+        downloads[index].localURL = localURL
+        downloads[index].state = .completed
+        downloads[index].progress = 1.0
+        activeWebKitDownloads.removeValue(forKey: id)
+    }
+
+    func failWebKitDownload(id: UUID, error: Error) {
+        guard let index = downloads.firstIndex(where: { $0.id == id }) else { return }
+        downloads[index].state = .failed
+        downloads[index].errorMessage = error.localizedDescription
+        activeWebKitDownloads.removeValue(forKey: id)
+    }
+
+    private func showToast(filename: String) {
+        let toast = DownloadToast(filename: filename)
+        activeToast = toast
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if self.activeToast?.id == toast.id {
+                self.activeToast = nil
+            }
+        }
     }
 
     func cancelDownload(id: UUID) {
@@ -56,6 +102,11 @@ final class DownloadManager: NSObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Downloads", isDirectory: true)
     }
+}
+
+struct DownloadToast: Identifiable, Equatable {
+    let id = UUID()
+    let filename: String
 }
 
 

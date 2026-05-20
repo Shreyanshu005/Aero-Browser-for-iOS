@@ -17,6 +17,10 @@ struct WebScrollMetrics: Equatable {
     var isNearTop: Bool {
         offsetY <= 12
     }
+
+    var isNearBottom: Bool {
+        (offsetY + viewportHeight) >= (contentHeight - 12)
+    }
 }
 
 struct BrowserChromeController {
@@ -38,6 +42,14 @@ struct BrowserChromeController {
         guard !metrics.isNearTop else {
             expand()
             lastOffsetY = metrics.offsetY
+            return
+        }
+
+        // Avoid jittery expand/collapse when the user is bouncing at the bottom.
+        guard !metrics.isNearBottom else {
+            lastOffsetY = metrics.offsetY
+            accumulatedDownScroll = 0
+            accumulatedUpScroll = 0
             return
         }
 
@@ -82,7 +94,7 @@ struct BrowserChromeController {
 
 enum BrowserChromeLayout {
     static let compactTopInset: CGFloat = 0
-    static let expandedBottomInset: CGFloat = 118
-    static let focusedBottomInset: CGFloat = 72
+    static let expandedBottomInset: CGFloat = 0
+    static let focusedBottomInset: CGFloat = 0
     static let compactBottomInset: CGFloat = 0
 }

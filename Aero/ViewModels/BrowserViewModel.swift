@@ -11,8 +11,9 @@ import WebKit
 @Observable
 final class BrowserViewModel {
 
-    var wikiSuggestions: [WikiSuggestion] = []
-    var wikiTask: Task<Void, Never>?
+    var searchSuggestions: [String] = []
+    var suggestionsTask: Task<Void, Never>?
+    var recentSearches: [String] = UserDefaults.standard.stringArray(forKey: "recent_searches") ?? []
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -43,6 +44,11 @@ final class BrowserViewModel {
     var activeTab: Tab? { tabManager.activeTab }
     var chromeMode: BottomChromeMode { chromeController.mode }
 
+    var isTabSwipeActive: Bool = false
+    var tabSwipeTranslationX: CGFloat = 0
+    var tabSwipeTargetTabID: UUID? = nil
+    var tabSwipeDirection: CGFloat = 0
+
     init() {
         self.tabManager = TabManager()
         self.historyStore = HistoryStore()
@@ -69,13 +75,27 @@ final class BrowserViewModel {
         case .url(let directURL):
             url = directURL
         case .search(let query):
+            addRecentSearch(query)
             guard let searchURL = searchEngine.searchURL(for: query) else { return }
             url = searchURL
         }
 
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
+        clearSearchSuggestions()
         chromeController.expand()
+    }
+
+    private func addRecentSearch(_ query: String) {
+        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+
+        recentSearches.removeAll { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
+        recentSearches.insert(cleaned, at: 0)
+        if recentSearches.count > 20 {
+            recentSearches = Array(recentSearches.prefix(20))
+        }
+        UserDefaults.standard.set(recentSearches, forKey: "recent_searches")
     }
 
 
@@ -116,5 +136,56 @@ final class BrowserViewModel {
 
     func stopLoading() {
         activeTab?.webView?.stopLoading()
+    }
+
+    func beginTabSwipe(direction: CGFloat) {
+        guard isTabSwipeActive == false else { return }
+        guard direction == 1 || direction == -1 else { return }
+        guard tabManager.tabCount > 1 else { return }
+
+        tabSwipeDirection = direction
+        tabSwipeTargetTabID = tabManager.neighborTabID(direction: direction)
+        guard tabSwipeTargetTabID != nil else { return }
+        isTabSwipeActive = true
+        tabSwipeTranslationX = 0
+    }
+
+    func updateTabSwipe(translationX: CGFloat) {
+        guard isTabSwipeActive else { return }
+        let width = UIScreen.main.bounds.width
+        tabSwipeTranslationX = translationX.clamped(to: -width...width)
+    }
+
+    func endTabSwipe(commit: Bool) {
+        guard isTabSwipeActive else { return }
+        if commit, let targetID = tabSwipeTargetTabID {
+            tabManager.switchToTab(id: targetID)
+            syncAddressBarWithActiveTab()
+        }
+        isTabSwipeActive = false
+        tabSwipeTranslationX = 0
+        tabSwipeTargetTabID = nil
+        tabSwipeDirection = 0
+    }
+
+    func completeTabSwipe(commit: Bool, width: CGFloat) {
+        guard isTabSwipeActive else { return }
+
+        if commit {
+            let targetX = tabSwipeDirection > 0 ? width : -width
+            withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.92)) {
+                tabSwipeTranslationX = targetX
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                self.endTabSwipe(commit: true)
+            }
+        } else {
+            withAnimation(.interactiveSpring(response: 0.26, dampingFraction: 0.86)) {
+                tabSwipeTranslationX = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                self.endTabSwipe(commit: false)
+            }
+        }
     }
 }

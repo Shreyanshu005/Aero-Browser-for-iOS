@@ -22,8 +22,9 @@ extension BrowserViewModel {
     }
 
     func dismissSearchPresentation() {
+        syncAddressBarWithActiveTab()
         isAddressBarFocused = false
-        clearWikiSuggestions()
+        clearSearchSuggestions()
         chromeController.expand()
     }
 }

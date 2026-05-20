@@ -20,8 +20,8 @@ struct ToolbarView: View {
                 viewModel.goForward()
             }
 
-            toolbarButton("square.and.arrow.up", enabled: viewModel.activeTab?.url != nil) {
-                shareCurrentPage()
+            toolbarButton("plus", enabled: true) {
+                viewModel.newTab()
             }
 
 
@@ -60,12 +60,4 @@ struct ToolbarView: View {
         .disabled(!enabled)
     }
 
-    private func shareCurrentPage() {
-        guard let url = viewModel.shareURL() else { return }
-        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
-        }
-    }
 }

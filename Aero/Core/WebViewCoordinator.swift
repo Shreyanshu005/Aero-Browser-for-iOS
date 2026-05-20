@@ -9,14 +9,24 @@ import UIKit
 import WebKit
 import Combine
 
-final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
+final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate, WKDownloadDelegate {
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
+    let downloadManager: DownloadManager
     private var observations: [NSKeyValueObservation] = []
+    private weak var refreshControl: UIRefreshControl?
+    private var downloadMap: [ObjectIdentifier: UUID] = [:]
+    private var downloadProgressObservers: [ObjectIdentifier: NSKeyValueObservation] = [:]
+    private var downloadDestinations: [ObjectIdentifier: URL] = [:]
 
-    init(tab: Tab, onNavigationEvent: @escaping (NavigationEvent) -> Void) {
+    init(
+        tab: Tab,
+        onNavigationEvent: @escaping (NavigationEvent) -> Void,
+        downloadManager: DownloadManager
+    ) {
         self.tab = tab
         self.onNavigationEvent = onNavigationEvent
+        self.downloadManager = downloadManager
         super.init()
     }
 
@@ -30,6 +40,16 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
         observations.removeAll()
         webView.scrollView.delegate = self
+        webView.scrollView.alwaysBounceVertical = true
+
+        if webView.scrollView.refreshControl == nil {
+            let rc = UIRefreshControl()
+            rc.addTarget(self, action: #selector(handleRefreshControl), for: .valueChanged)
+            webView.scrollView.refreshControl = rc
+            refreshControl = rc
+        } else {
+            refreshControl = webView.scrollView.refreshControl
+        }
 
         observations.append(
             webView.observe(\.estimatedProgress, options: .new) { [weak self] wv, _ in
@@ -99,20 +119,121 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         tab.lastAccessedAt = Date()
         onNavigationEvent(.didFinishLoading)
 
+        updateThemeColor(from: webView)
+        refreshControl?.endRefreshing()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.tab.captureSnapshot()
         }
     }
 
+    private func updateThemeColor(from webView: WKWebView) {
+        let js = """
+        (function() {
+          try {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta && meta.content) return meta.content;
+            var bodyBg = window.getComputedStyle(document.body).backgroundColor;
+            if (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)' && bodyBg !== 'transparent') return bodyBg;
+            var docBg = window.getComputedStyle(document.documentElement).backgroundColor;
+            if (docBg) return docBg;
+          } catch (e) {}
+          return null;
+        })();
+        """
+        webView.evaluateJavaScript(js) { [weak self] result, _ in
+            guard let self else { return }
+            let color = Self.parseCSSColor(result as? String) ?? UIColor.systemBackground
+            DispatchQueue.main.async {
+                self.tab.pageBackgroundColor = color
+                webView.scrollView.backgroundColor = color
+                webView.backgroundColor = color
+                if #available(iOS 15.0, *) {
+                    webView.underPageBackgroundColor = color
+                }
+            }
+        }
+    }
+
+    private static func parseCSSColor(_ string: String?) -> UIColor? {
+        guard var s = string?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else { return nil }
+        s = s.lowercased()
+
+        if s.hasPrefix("#") {
+            let hex = String(s.dropFirst())
+            func hexToInt(_ sub: Substring) -> Int? { Int(sub, radix: 16) }
+            if hex.count == 3,
+               let r = hexToInt(hex.prefix(1)),
+               let g = hexToInt(hex.dropFirst(1).prefix(1)),
+               let b = hexToInt(hex.dropFirst(2).prefix(1)) {
+                return UIColor(
+                    red: CGFloat(r) / 15.0,
+                    green: CGFloat(g) / 15.0,
+                    blue: CGFloat(b) / 15.0,
+                    alpha: 1
+                )
+            }
+            if hex.count == 6,
+               let r = hexToInt(hex.prefix(2)),
+               let g = hexToInt(hex.dropFirst(2).prefix(2)),
+               let b = hexToInt(hex.dropFirst(4).prefix(2)) {
+                return UIColor(
+                    red: CGFloat(r) / 255.0,
+                    green: CGFloat(g) / 255.0,
+                    blue: CGFloat(b) / 255.0,
+                    alpha: 1
+                )
+            }
+            return nil
+        }
+
+        if s.hasPrefix("rgb(") || s.hasPrefix("rgba(") {
+            let start = s.firstIndex(of: "(")
+            let end = s.lastIndex(of: ")")
+            guard let start, let end, start < end else { return nil }
+            let inner = s[s.index(after: start)..<end]
+            let parts = inner.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count >= 3 else { return nil }
+
+            func parseComponent(_ str: String) -> CGFloat? {
+                if str.hasSuffix("%") {
+                    let n = str.dropLast()
+                    guard let v = Double(n) else { return nil }
+                    return CGFloat(v / 100.0)
+                }
+                guard let v = Double(str) else { return nil }
+                return CGFloat(v / 255.0)
+            }
+
+            guard let r = parseComponent(parts[0]),
+                  let g = parseComponent(parts[1]),
+                  let b = parseComponent(parts[2]) else { return nil }
+
+            let a: CGFloat = {
+                guard parts.count >= 4, let v = Double(parts[3]) else { return 1 }
+                return CGFloat(max(0, min(1, v)))
+            }()
+
+            return UIColor(red: r, green: g, blue: b, alpha: a)
+        }
+
+        return nil
+    }
+
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         tab.isLoading = false
         onNavigationEvent(.didFailLoading(error))
+        refreshControl?.endRefreshing()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         tab.isLoading = false
         onNavigationEvent(.didFailLoading(error))
+        refreshControl?.endRefreshing()
+    }
+
+    @objc private func handleRefreshControl() {
+        tab.webView?.reload()
     }
 
     func webView(
@@ -120,8 +241,136 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if #available(iOS 14.5, *) {
+            if navigationAction.shouldPerformDownload {
+                decisionHandler(.download)
+                return
+            }
+        }
+        decisionHandler(.allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        guard let url = navigationResponse.response.url else {
+            decisionHandler(.allow)
+            return
+        }
+
+        if let http = navigationResponse.response as? HTTPURLResponse,
+           let disposition = http.value(forHTTPHeaderField: "Content-Disposition")?.lowercased(),
+           disposition.contains("attachment") {
+            if #available(iOS 14.5, *) {
+                decisionHandler(.download)
+                return
+            } else {
+                downloadManager.startDownload(url: url, suggestedFilename: http.suggestedFilename)
+                decisionHandler(.cancel)
+                return
+            }
+        }
+
+        if navigationResponse.canShowMIMEType == false {
+            if #available(iOS 14.5, *) {
+                decisionHandler(.download)
+                return
+            } else {
+                downloadManager.startDownload(url: url, suggestedFilename: navigationResponse.response.suggestedFilename)
+                decisionHandler(.cancel)
+                return
+            }
+        }
 
         decisionHandler(.allow)
+    }
+
+    // MARK: - WKDownload bridge
+
+    @available(iOS 14.5, *)
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        attach(download: download, sourceURL: navigationAction.request.url)
+    }
+
+    @available(iOS 14.5, *)
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        attach(download: download, sourceURL: navigationResponse.response.url)
+    }
+
+    @available(iOS 14.5, *)
+    private func attach(download: WKDownload, sourceURL: URL?) {
+        download.delegate = self
+
+        let key = ObjectIdentifier(download)
+        if downloadMap[key] == nil {
+            let url = sourceURL ?? URL(string: "about:blank")!
+            let id = downloadManager.startWebKitDownload(
+                sourceURL: url,
+                filename: url.lastPathComponent.isEmpty ? "Download" : url.lastPathComponent
+            )
+            downloadMap[key] = id
+
+            downloadProgressObservers[key] = download.progress.observe(\.fractionCompleted, options: [.new]) { [weak self] _, change in
+                guard let self, let fraction = change.newValue else { return }
+                guard let mappedID = self.downloadMap[key] else { return }
+                self.downloadManager.updateWebKitDownloadProgress(id: mappedID, progress: fraction)
+            }
+        }
+    }
+
+    @available(iOS 14.5, *)
+    func download(
+        _ download: WKDownload,
+        decideDestinationUsing response: URLResponse,
+        suggestedFilename: String,
+        completionHandler: @escaping (URL?) -> Void
+    ) {
+        let downloadsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Downloads", isDirectory: true)
+        try? FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
+        let destination = downloadsDir.appendingPathComponent(suggestedFilename)
+        // Avoid failures when a file with the same name already exists.
+        try? FileManager.default.removeItem(at: destination)
+        downloadDestinations[ObjectIdentifier(download)] = destination
+        completionHandler(destination)
+
+        let key = ObjectIdentifier(download)
+        if let id = downloadMap[key],
+           let index = downloadManager.downloads.firstIndex(where: { $0.id == id }) {
+            downloadManager.downloads[index].filename = suggestedFilename
+        }
+    }
+
+    @available(iOS 14.5, *)
+    func downloadDidFinish(_ download: WKDownload) {
+        let key = ObjectIdentifier(download)
+        defer {
+            downloadMap.removeValue(forKey: key)
+            downloadProgressObservers.removeValue(forKey: key)
+            downloadDestinations.removeValue(forKey: key)
+        }
+
+        guard let id = downloadMap[key],
+              let fileURL = downloadDestinations[key] else {
+            return
+        }
+        downloadManager.completeWebKitDownload(id: id, localURL: fileURL)
+    }
+
+    @available(iOS 14.5, *)
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        let key = ObjectIdentifier(download)
+        defer {
+            downloadMap.removeValue(forKey: key)
+            downloadProgressObservers.removeValue(forKey: key)
+            downloadDestinations.removeValue(forKey: key)
+        }
+
+        if let id = downloadMap[key] {
+            downloadManager.failWebKitDownload(id: id, error: error)
+        }
     }
 
 

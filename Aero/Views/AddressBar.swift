@@ -6,49 +6,44 @@
 
 
 import SwiftUI
+import UIKit
 
 struct AddressBar: View {
     @Bindable var viewModel: BrowserViewModel
-    @FocusState private var isFocused: Bool
+
+    @State private var isTabSwipeGestureActive = false
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: iconName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(iconColor)
+            leadingAccessory
 
             if viewModel.isAddressBarFocused {
-                TextField("Search or enter URL", text: $viewModel.addressBarText)
-                    .font(.system(.body, design: .default))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.webSearch)
-                    .submitLabel(.go)
-                    .focused($isFocused)
-                    .onSubmit {
-                        viewModel.submitAddressBar()
-                    }
+                SelectableTextField(
+                    placeholder: "Search or enter URL",
+                    text: $viewModel.addressBarText,
+                    isFirstResponder: $viewModel.isAddressBarFocused,
+                    selectAllOnFocus: true,
+                    keyboardType: .webSearch,
+                    onSubmit: { viewModel.submitAddressBar() }
+                )
+                .frame(height: 22)
             } else {
-                Text(displayText)
-                    .font(.system(.body, weight: .medium))
-                    .foregroundStyle(displayTextColor)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                HStack(spacing: 6) {
+                    if viewModel.activeTab?.isSecure == true {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AeroColor.secure)
+                    }
+
+                    Text(displayText)
+                        .font(.system(.body, weight: .medium))
+                        .foregroundStyle(displayTextColor)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            if viewModel.activeTab?.isLoading == true {
-                Button { viewModel.stopLoading() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-            } else if viewModel.activeTab?.url != nil {
-                Button { viewModel.reload() } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
+            trailingButton
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -59,15 +54,82 @@ struct AddressBar: View {
                 viewModel.isAddressBarFocused = true
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                .onChanged { v in
+                    guard viewModel.isAddressBarFocused == false else { return }
+
+                    let dx = v.translation.width
+                    let dy = v.translation.height
+                    guard abs(dx) > 10, abs(dx) > abs(dy) * 2.0 else { return }
+
+                    let dir: CGFloat = dx > 0 ? 1 : -1
+                    if !isTabSwipeGestureActive {
+                        isTabSwipeGestureActive = true
+                        viewModel.beginTabSwipe(direction: dir)
+                    }
+                    viewModel.updateTabSwipe(translationX: dx)
+                }
+                .onEnded { v in
+                    defer {
+                        isTabSwipeGestureActive = false
+                    }
+                    guard viewModel.isAddressBarFocused == false else { return }
+
+                    let dx = v.translation.width
+                    let dy = v.translation.height
+                    guard abs(dx) > 30, abs(dx) > abs(dy) * 2.0 else {
+                        if viewModel.isTabSwipeActive {
+                            viewModel.completeTabSwipe(commit: false, width: UIScreen.main.bounds.width)
+                        }
+                        return
+                    }
+
+                    let predicted = v.predictedEndTranslation.width
+                    let commit = abs(predicted) > 120 || abs(dx) > 120
+                    viewModel.completeTabSwipe(commit: commit, width: UIScreen.main.bounds.width)
+                }
+        )
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
-            isFocused = newValue
-            if !newValue { viewModel.clearWikiSuggestions() }
-        }
-        .onChange(of: isFocused) { _, newValue in
-            if !newValue { viewModel.isAddressBarFocused = false }
+            if !newValue { viewModel.clearSearchSuggestions() }
         }
         .onChange(of: viewModel.addressBarText) { _, newText in
-            viewModel.fetchWikiSuggestions(for: newText)
+            viewModel.fetchSearchSuggestions(for: newText)
+        }
+        .onAppear {
+            if viewModel.isAddressBarFocused {
+                viewModel.fetchSearchSuggestions(for: viewModel.addressBarText)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var trailingButton: some View {
+        if viewModel.isAddressBarFocused {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                viewModel.addressBarText = ""
+                viewModel.clearSearchSuggestions()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(UIColor.tertiaryLabel))
+            }
+            .buttonStyle(.plain)
+            .opacity(viewModel.addressBarText.isEmpty ? 0 : 1)
+            .disabled(viewModel.addressBarText.isEmpty)
+        } else if viewModel.activeTab?.isLoading == true {
+            Button { viewModel.stopLoading() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+        } else if viewModel.activeTab?.url != nil {
+            Button { viewModel.reload() } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -78,19 +140,35 @@ struct AddressBar: View {
         return "Search or enter URL"
     }
 
+    @ViewBuilder
+    private var leadingAccessory: some View {
+        if viewModel.isAddressBarFocused {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color(UIColor.secondaryLabel))
+        } else {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                shareCurrentPage()
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(UIColor.secondaryLabel))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.activeTab?.url == nil)
+            .opacity(viewModel.activeTab?.url == nil ? 0.35 : 1.0)
+        }
+    }
+
     private var displayTextColor: Color {
         viewModel.activeTab?.url != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
     }
 
-    private var iconName: String {
-        if viewModel.isAddressBarFocused { return "magnifyingglass" }
-        if viewModel.activeTab?.isSecure == true { return "lock.fill" }
-        if viewModel.activeTab?.url != nil { return "globe" }
-        return "magnifyingglass"
-    }
-
-    private var iconColor: Color {
-        if viewModel.activeTab?.isSecure == true { return .green }
-        return Color(UIColor.secondaryLabel)
+    private func shareCurrentPage() {
+        guard let url = viewModel.shareURL() else { return }
+        SharePresenter.present(items: [url])
     }
 }

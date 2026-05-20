@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import WebKit
 
@@ -26,10 +19,9 @@ final class Tab: Identifiable {
     var isSecure: Bool = false
     var snapshot: UIImage?
     var favicon: UIImage?
+    var pageBackgroundColor: UIColor = .systemBackground
     let createdAt: Date
     var lastAccessedAt: Date
-
-
 
     var webView: WKWebView?
 
@@ -40,7 +32,6 @@ final class Tab: Identifiable {
         self.createdAt = Date()
         self.lastAccessedAt = Date()
     }
-
 
     func createWebView() -> WKWebView {
         if let existing = webView {
@@ -55,16 +46,15 @@ final class Tab: Identifiable {
         let wv = WKWebView(frame: .zero, configuration: config)
         wv.allowsBackForwardNavigationGestures = true
         wv.scrollView.contentInsetAdjustmentBehavior = .never
+        wv.scrollView.alwaysBounceVertical = true
 
         self.webView = wv
         return wv
     }
 
-
     func captureSnapshot() {
         guard let webView = webView else { return }
         let config = WKSnapshotConfiguration()
-        config.snapshotWidth = 200
 
         webView.takeSnapshot(with: config) { [weak self] image, _ in
             DispatchQueue.main.async {
