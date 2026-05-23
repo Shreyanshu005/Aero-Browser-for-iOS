@@ -7,11 +7,15 @@
 
 import SwiftUI
 import WebKit
+import Observation
 
 @Observable
 final class TabManager {
     var tabs: [Tab] = []
     var activeTabIndex: Int = 0
+
+    @ObservationIgnored
+    private let sessionStore: SessionStoring
 
     static let maxTabs = 100
 
@@ -24,10 +28,16 @@ final class TabManager {
 
     var tabCount: Int { tabs.count }
 
-    init() {
+    init(sessionStore: SessionStoring = SessionStore()) {
+        self.sessionStore = sessionStore
 
-        let tab = Tab()
-        tabs.append(tab)
+        if let session = sessionStore.loadSession(),
+           !session.tabs.isEmpty {
+            restore(session)
+        } else {
+            tabs.append(Tab())
+            saveSession()
+        }
     }
 
 
@@ -35,6 +45,13 @@ final class TabManager {
 
     @discardableResult
     func newTab(url: URL? = nil) -> Tab {
+        let tab = appendTab(url: url)
+        saveSession()
+        return tab
+    }
+
+    @discardableResult
+    private func appendTab(url: URL? = nil) -> Tab {
         guard tabs.count < TabManager.maxTabs else {
             return tabs[activeTabIndex]
         }
@@ -57,12 +74,14 @@ final class TabManager {
 
         if tabs.isEmpty {
 
-            newTab()
+            appendTab()
         } else if activeTabIndex >= tabs.count {
             activeTabIndex = tabs.count - 1
         } else if index <= activeTabIndex && activeTabIndex > 0 {
             activeTabIndex -= 1
         }
+
+        saveSession()
     }
 
 
@@ -74,6 +93,7 @@ final class TabManager {
 
         activeTabIndex = index
         tabs[index].lastAccessedAt = Date()
+        saveSession()
     }
 
 
@@ -83,7 +103,8 @@ final class TabManager {
             tab.webView = nil
         }
         tabs.removeAll()
-        newTab()
+        appendTab()
+        saveSession()
     }
 
 
@@ -95,5 +116,42 @@ final class TabManager {
 
         tab.url = url
         tab.webView?.load(URLRequest(url: url))
+        saveSession()
+    }
+
+    func saveSession() {
+        let restoredTabs = tabs.prefix(Self.maxTabs).map { tab in
+            RestoredTabState(
+                url: tab.url,
+                title: tab.title,
+                createdAt: tab.createdAt,
+                lastAccessedAt: tab.lastAccessedAt
+            )
+        }
+        let state = BrowserSessionState(
+            activeTabIndex: min(max(activeTabIndex, 0), max(restoredTabs.count - 1, 0)),
+            tabs: Array(restoredTabs)
+        )
+        sessionStore.saveSession(state)
+    }
+
+    private func restore(_ session: BrowserSessionState) {
+        tabs = session.tabs
+            .prefix(Self.maxTabs)
+            .map { state in
+                Tab(
+                    url: state.url,
+                    title: state.title,
+                    createdAt: state.createdAt,
+                    lastAccessedAt: state.lastAccessedAt
+                )
+            }
+
+        if tabs.isEmpty {
+            tabs.append(Tab())
+            activeTabIndex = 0
+        } else {
+            activeTabIndex = min(max(session.activeTabIndex, 0), tabs.count - 1)
+        }
     }
 }

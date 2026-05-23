@@ -88,6 +88,9 @@ final class BrowserViewModel {
             if let tab = activeTab, let url = tab.url, !url.isInternalPage {
                 historyStore.addVisit(url: url, title: tab.title)
             }
+            tabManager.saveSession()
+        case .didUpdateTitle(_), .didUpdateURL(_):
+            tabManager.saveSession()
         case .didScroll(let metrics):
             guard activeTab?.url != nil,
                   isAddressBarFocused == false,

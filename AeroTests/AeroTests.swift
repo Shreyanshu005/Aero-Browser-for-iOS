@@ -183,4 +183,161 @@ struct AeroTests {
         #expect(urlMatches.first?.title == "Release Notes")
     }
 
+    @Test func tabManagerStartsWithBlankTabWhenNoSessionExists() {
+        let store = SpySessionStore(loadResult: nil)
+        let manager = TabManager(sessionStore: store)
+
+        #expect(manager.tabs.count == 1)
+        #expect(manager.activeTabIndex == 0)
+        #expect(manager.activeTab?.url == nil)
+        #expect(store.savedSessions.last?.tabs.count == 1)
+    }
+
+    @Test func tabManagerRestoresSavedTabsInOrder() {
+        let firstURL = URL(string: "https://example.com")!
+        let secondURL = URL(string: "https://swift.org")!
+        let session = BrowserSessionState(
+            activeTabIndex: 1,
+            tabs: [
+                RestoredTabState(url: firstURL, title: "Example", createdAt: Date(), lastAccessedAt: Date()),
+                RestoredTabState(url: secondURL, title: "Swift", createdAt: Date(), lastAccessedAt: Date()),
+            ]
+        )
+
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: session))
+
+        #expect(manager.tabs.map { $0.url } == [firstURL, secondURL])
+        #expect(manager.tabs.map(\.title) == ["Example", "Swift"])
+        #expect(manager.activeTabIndex == 1)
+    }
+
+    @Test func tabManagerClampsInvalidRestoredActiveIndex() {
+        let session = BrowserSessionState(
+            activeTabIndex: 99,
+            tabs: [
+                RestoredTabState(url: URL(string: "https://example.com")!, title: "Example", createdAt: Date(), lastAccessedAt: Date()),
+            ]
+        )
+
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: session))
+
+        #expect(manager.activeTabIndex == 0)
+    }
+
+    @Test func tabManagerFallsBackWhenRestoredSessionIsEmpty() {
+        let store = SpySessionStore(loadResult: BrowserSessionState(activeTabIndex: 4, tabs: []))
+        let manager = TabManager(sessionStore: store)
+
+        #expect(manager.tabs.count == 1)
+        #expect(manager.activeTabIndex == 0)
+        #expect(manager.activeTab?.url == nil)
+    }
+
+    @Test func tabManagerCapsRestoredTabsAtMaximum() {
+        let restoredTabs = (0..<(TabManager.maxTabs + 5)).map { index in
+            RestoredTabState(
+                url: URL(string: "https://example\(index).com")!,
+                title: "Example \(index)",
+                createdAt: Date(),
+                lastAccessedAt: Date()
+            )
+        }
+        let session = BrowserSessionState(activeTabIndex: TabManager.maxTabs + 4, tabs: restoredTabs)
+
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: session))
+
+        #expect(manager.tabs.count == TabManager.maxTabs)
+        #expect(manager.activeTabIndex == TabManager.maxTabs - 1)
+    }
+
+    @Test func sessionStoreReturnsNilForCorruptSessionFile() throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("aero_corrupt_session_\(UUID().uuidString).json")
+        try Data("not-json".utf8).write(to: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let store = SessionStore(fileURL: fileURL)
+
+        #expect(store.loadSession() == nil)
+    }
+
+    @Test func tabManagerFallsBackWhenSessionFileIsCorrupt() throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("aero_corrupt_manager_session_\(UUID().uuidString).json")
+        try Data("not-json".utf8).write(to: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let manager = TabManager(sessionStore: SessionStore(fileURL: fileURL))
+
+        #expect(manager.tabs.count == 1)
+        #expect(manager.activeTabIndex == 0)
+        #expect(manager.activeTab?.url == nil)
+    }
+
+    @Test func sessionStoreSavesAndLoadsSession() throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("aero_session_\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let state = BrowserSessionState(
+            activeTabIndex: 0,
+            tabs: [
+                RestoredTabState(
+                    url: URL(string: "https://example.com")!,
+                    title: "Example",
+                    createdAt: date,
+                    lastAccessedAt: date
+                ),
+            ]
+        )
+        let store = SessionStore(fileURL: fileURL)
+
+        store.saveSession(state)
+
+        #expect(store.loadSession() == state)
+    }
+
+    @Test func tabManagerSavesAfterCreateCloseSwitchAndLoad() {
+        let store = SpySessionStore(loadResult: nil)
+        let manager = TabManager(sessionStore: store)
+        let initialSaveCount = store.savedSessions.count
+
+        let firstURL = URL(string: "https://example.com")!
+        let secondURL = URL(string: "https://swift.org")!
+        let firstTab = manager.loadInActiveTabAndReturnActiveTab(url: firstURL)
+        let secondTab = manager.newTab(url: secondURL)
+        manager.switchToTab(id: firstTab.id)
+        manager.closeTab(id: secondTab.id)
+
+        #expect(store.savedSessions.count >= initialSaveCount + 4)
+        #expect(store.savedSessions.last?.tabs.count == 1)
+        #expect(store.savedSessions.last?.tabs.first?.url == firstURL)
+        #expect(store.savedSessions.last?.activeTabIndex == 0)
+    }
+
+}
+
+private final class SpySessionStore: SessionStoring {
+    let loadResult: BrowserSessionState?
+    var savedSessions: [BrowserSessionState] = []
+
+    init(loadResult: BrowserSessionState?) {
+        self.loadResult = loadResult
+    }
+
+    func loadSession() -> BrowserSessionState? {
+        loadResult
+    }
+
+    func saveSession(_ session: BrowserSessionState) {
+        savedSessions.append(session)
+    }
+}
+
+private extension TabManager {
+    func loadInActiveTabAndReturnActiveTab(url: URL) -> Tab {
+        loadInActiveTab(url: url)
+        return activeTab!
+    }
 }

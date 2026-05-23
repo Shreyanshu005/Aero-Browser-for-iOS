@@ -33,12 +33,17 @@ final class Tab: Identifiable {
 
     var webView: WKWebView?
 
-    init(url: URL? = nil) {
+    init(
+        url: URL? = nil,
+        title: String = "",
+        createdAt: Date = Date(),
+        lastAccessedAt: Date = Date()
+    ) {
         self.id = UUID()
         self.url = url
-        self.title = ""
-        self.createdAt = Date()
-        self.lastAccessedAt = Date()
+        self.title = title
+        self.createdAt = createdAt
+        self.lastAccessedAt = lastAccessedAt
     }
 
 
