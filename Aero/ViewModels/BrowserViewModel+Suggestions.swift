@@ -1,37 +1,35 @@
 import Foundation
 
 extension BrowserViewModel {
-    func fetchWikiSuggestions(for query: String) {
-        wikiTask?.cancel()
+    func updateSuggestions(for query: String) {
         guard !query.isEmpty, isAddressBarFocused else {
-            wikiSuggestions = []
+            suggestions = []
             return
         }
 
-        wikiTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled else { return }
+        suggestions = suggestionProvider.suggestions(
+            for: query,
+            tabs: tabManager.tabs,
+            favorites: favoritesStore.favorites,
+            history: historyStore.items,
+            activeTabID: activeTab?.id
+        )
+    }
 
-            let results = await WikipediaService.search(query: query)
-            guard !Task.isCancelled else { return }
+    func clearSuggestions() {
+        suggestions = []
+    }
 
-            await MainActor.run {
-                self.wikiSuggestions = results
-            }
+    func selectSuggestion(_ suggestion: BrowserSuggestion) {
+        if let tabID = suggestion.tabID {
+            tabManager.switchToTab(id: tabID)
+        } else if let url = suggestion.url {
+            addressBarText = url.absoluteString
+            tabManager.loadInActiveTab(url: url)
         }
-    }
 
-    func clearWikiSuggestions() {
-        wikiTask?.cancel()
-        wikiSuggestions = []
-    }
-
-    func navigateToWikiSuggestion(_ suggestion: WikiSuggestion) {
-        guard let url = suggestion.pageURL else { return }
-        addressBarText = url.absoluteString
-        tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
-        clearWikiSuggestions()
+        clearSuggestions()
         chromeController.expand()
     }
 }

@@ -23,7 +23,7 @@ extension BrowserViewModel {
 
     func dismissSearchPresentation() {
         isAddressBarFocused = false
-        clearWikiSuggestions()
+        clearSuggestions()
         chromeController.expand()
     }
 }

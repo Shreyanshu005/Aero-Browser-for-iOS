@@ -7,12 +7,15 @@
 
 import SwiftUI
 import WebKit
+import Observation
 
 @Observable
 final class BrowserViewModel {
 
-    var wikiSuggestions: [WikiSuggestion] = []
-    var wikiTask: Task<Void, Never>?
+    var suggestions: [BrowserSuggestion] = []
+
+    @ObservationIgnored
+    private let suggestionProvider = LocalSuggestionProvider()
 
     var tabManager: TabManager
     var historyStore: HistoryStore

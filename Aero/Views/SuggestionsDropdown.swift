@@ -1,8 +1,8 @@
 import SwiftUI
 
-struct WikiSuggestionsDropdown: View {
-    let suggestions: [WikiSuggestion]
-    let onSelect: (WikiSuggestion) -> Void
+struct SuggestionsDropdown: View {
+    let suggestions: [BrowserSuggestion]
+    let onSelect: (BrowserSuggestion) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,7 +11,7 @@ struct WikiSuggestionsDropdown: View {
                     onSelect(suggestion)
                 } label: {
                     HStack(spacing: AeroSpacing.md) {
-                        Image(systemName: "w.circle.fill")
+                        Image(systemName: suggestion.kind.iconName)
                             .font(.system(size: 22, weight: .medium))
                             .foregroundStyle(Color(UIColor.secondaryLabel))
 
@@ -21,8 +21,8 @@ struct WikiSuggestionsDropdown: View {
                                 .foregroundStyle(AeroColor.textPrimary)
                                 .lineLimit(1)
 
-                            if !suggestion.summary.isEmpty {
-                                Text(suggestion.summary)
+                            if !suggestion.subtitle.isEmpty {
+                                Text(suggestion.subtitle)
                                     .font(AeroFont.captionSmall)
                                     .foregroundStyle(AeroColor.textTertiary)
                                     .lineLimit(2)

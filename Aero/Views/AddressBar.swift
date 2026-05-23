@@ -61,13 +61,13 @@ struct AddressBar: View {
         }
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
             isFocused = newValue
-            if !newValue { viewModel.clearWikiSuggestions() }
+            if !newValue { viewModel.clearSuggestions() }
         }
         .onChange(of: isFocused) { _, newValue in
             if !newValue { viewModel.isAddressBarFocused = false }
         }
         .onChange(of: viewModel.addressBarText) { _, newText in
-            viewModel.fetchWikiSuggestions(for: newText)
+            viewModel.updateSuggestions(for: newText)
         }
     }
 
