@@ -6,6 +6,21 @@ The project explores modern iOS design patterns and browser architecture using A
 
 ---
 
+## Preview
+
+<p align="center">
+  <img src="https://i.ibb.co/ntWpG1H/IMG-5122.png" width="180" />
+  <img src="https://i.ibb.co/39GL6yF9/IMG-5123.png" width="180" />
+  <img src="https://i.ibb.co/TBbKC9Mx/IMG-5124.png" width="180" />
+</p>
+
+<p align="center">
+  <img src="https://i.ibb.co/LX96bwsz/IMG-5125.png" width="180" />
+  <img src="https://i.ibb.co/qMZsYK2q/IMG-5126.png" width="180" />
+</p>
+
+---
+
 ## Overview
 
 Most mobile browsers try to fit many features into a small screen. Aero takes a simpler approach by focusing on browsing comfort, readable layouts, and easy one handed navigation.
