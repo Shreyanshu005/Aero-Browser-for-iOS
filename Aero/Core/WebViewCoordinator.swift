@@ -120,8 +120,51 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if navigationAction.shouldPerformDownload,
+           let url = navigationAction.request.url {
+            onNavigationEvent(
+                .didRequestDownload(
+                    PendingDownload(
+                        url: url,
+                        suggestedFilename: nil,
+                        sourceHost: url.displayHost ?? url.host ?? url.absoluteString,
+                        mimeType: nil,
+                        expectedByteCount: nil
+                    )
+                )
+            )
+            decisionHandler(.cancel)
+            return
+        }
 
         decisionHandler(.allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        guard shouldDownload(navigationResponse),
+              let url = navigationResponse.response.url else {
+            decisionHandler(.allow)
+            return
+        }
+
+        let response = navigationResponse.response
+        let expectedLength = response.expectedContentLength > 0 ? response.expectedContentLength : nil
+        onNavigationEvent(
+            .didRequestDownload(
+                PendingDownload(
+                    url: url,
+                    suggestedFilename: response.suggestedFilename,
+                    sourceHost: url.displayHost ?? url.host ?? url.absoluteString,
+                    mimeType: response.mimeType,
+                    expectedByteCount: expectedLength
+                )
+            )
+        )
+        decisionHandler(.cancel)
     }
 
 
@@ -146,5 +189,18 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
             viewportHeight: scrollView.bounds.height
         )
         onNavigationEvent(.didScroll(metrics))
+    }
+
+    private func shouldDownload(_ navigationResponse: WKNavigationResponse) -> Bool {
+        if navigationResponse.canShowMIMEType == false {
+            return true
+        }
+
+        guard let httpResponse = navigationResponse.response as? HTTPURLResponse else {
+            return false
+        }
+
+        let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        return disposition.localizedCaseInsensitiveContains("attachment")
     }
 }

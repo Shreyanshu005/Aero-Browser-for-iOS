@@ -29,6 +29,12 @@ struct BrowserSheets: ViewModifier {
             .sheet(isPresented: $viewModel.showTrackerReceipt) {
                 TrackerReceiptView(viewModel: viewModel)
             }
+            .sheet(item: $viewModel.pendingDownload) { pendingDownload in
+                DownloadConfirmationSheet(
+                    pendingDownload: pendingDownload,
+                    viewModel: viewModel
+                )
+            }
     }
 }
 

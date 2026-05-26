@@ -95,5 +95,6 @@ enum NavigationEvent {
     case didUpdateURL(URL?)
     case didUpdateCanGoBack(Bool)
     case didUpdateCanGoForward(Bool)
+    case didRequestDownload(PendingDownload)
     case didScroll(WebScrollMetrics)
 }

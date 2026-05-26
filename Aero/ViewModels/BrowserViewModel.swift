@@ -41,6 +41,7 @@ final class BrowserViewModel {
     var showAddBookmark: Bool = false
     var showFindInPage: Bool = false
     var showTrackerReceipt: Bool = false
+    var pendingDownload: PendingDownload?
 
 
     var activeTab: Tab? { tabManager.activeTab }
@@ -91,6 +92,8 @@ final class BrowserViewModel {
             tabManager.saveSession()
         case .didUpdateTitle(_), .didUpdateURL(_):
             tabManager.saveSession()
+        case .didRequestDownload(let pendingDownload):
+            requestDownload(pendingDownload)
         case .didScroll(let metrics):
             guard activeTab?.url != nil,
                   isAddressBarFocused == false,
@@ -122,5 +125,24 @@ final class BrowserViewModel {
 
     func stopLoading() {
         activeTab?.webView?.stopLoading()
+    }
+
+    func requestDownload(_ pendingDownload: PendingDownload) {
+        self.pendingDownload = pendingDownload
+        chromeController.expand()
+    }
+
+    func confirmPendingDownload(id: UUID) {
+        guard pendingDownload?.id == id, let pendingDownload else { return }
+        downloadManager.startDownload(
+            url: pendingDownload.url,
+            suggestedFilename: pendingDownload.suggestedFilename
+        )
+        self.pendingDownload = nil
+    }
+
+    func cancelPendingDownload(id: UUID) {
+        guard pendingDownload?.id == id else { return }
+        pendingDownload = nil
     }
 }
