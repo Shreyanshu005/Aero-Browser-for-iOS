@@ -11,9 +11,9 @@ import WebKit
 @Observable
 final class BrowserViewModel {
 
-    var searchSuggestions: [String] = []
-    var suggestionsTask: Task<Void, Never>?
-    var recentSearches: [String] = UserDefaults.standard.stringArray(forKey: "recent_searches") ?? []
+    private(set) var searchService = SearchService()
+    var searchSuggestions: [String] { searchService.searchSuggestions }
+    var recentSearches: [String] { searchService.recentSearches }
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -21,6 +21,7 @@ final class BrowserViewModel {
     var downloadManager: DownloadManager
     var contentBlocker: ContentBlocker
 
+    private(set) lazy var navigationService = NavigationService(tabManager: tabManager, chromeController: chromeController)
 
     var isShowingTabGrid: Bool = false
     var isAddressBarFocused: Bool = false
@@ -31,15 +32,45 @@ final class BrowserViewModel {
     private var contentBlockerApplied: Bool = false
 
 
-    var showMenu: Bool = false
-    var showHistory: Bool = false
-    var showBookmarks: Bool = false
-    var showDownloads: Bool = false
-    var showSettings: Bool = false
-    var showReaderMode: Bool = false
-    var showAddBookmark: Bool = false
-    var showFindInPage: Bool = false
-    var showTrackerReceipt: Bool = false
+    var sheetRouter = SheetRouter()
+
+    var showMenu: Bool {
+        get { sheetRouter.activeSheet == .menu }
+        set { if newValue { sheetRouter.present(.menu) } else { sheetRouter.dismissSheet() } }
+    }
+    var showHistory: Bool {
+        get { sheetRouter.activeSheet == .history }
+        set { if newValue { sheetRouter.present(.history) } else { sheetRouter.dismissSheet() } }
+    }
+    var showBookmarks: Bool {
+        get { sheetRouter.activeSheet == .bookmarks }
+        set { if newValue { sheetRouter.present(.bookmarks) } else { sheetRouter.dismissSheet() } }
+    }
+    var showDownloads: Bool {
+        get { sheetRouter.activeSheet == .downloads }
+        set { if newValue { sheetRouter.present(.downloads) } else { sheetRouter.dismissSheet() } }
+    }
+    var showSettings: Bool {
+        get { sheetRouter.activeSheet == .settings }
+        set { if newValue { sheetRouter.present(.settings) } else { sheetRouter.dismissSheet() } }
+    }
+    var showAddBookmark: Bool {
+        get { sheetRouter.activeSheet == .addBookmark }
+        set { if newValue { sheetRouter.present(.addBookmark) } else { sheetRouter.dismissSheet() } }
+    }
+    var showTrackerReceipt: Bool {
+        get { sheetRouter.activeSheet == .trackerReceipt }
+        set { if newValue { sheetRouter.present(.trackerReceipt) } else { sheetRouter.dismissSheet() } }
+    }
+    
+    var showReaderMode: Bool {
+        get { sheetRouter.activeFullScreenCover == .readerMode }
+        set { if newValue { sheetRouter.presentFullScreen(.readerMode) } else { sheetRouter.dismissFullScreenCover() } }
+    }
+    var showFindInPage: Bool {
+        get { sheetRouter.activeFullScreenCover == .findInPage }
+        set { if newValue { sheetRouter.presentFullScreen(.findInPage) } else { sheetRouter.dismissFullScreenCover() } }
+    }
 
 
     var activeTab: Tab? { tabManager.activeTab }
@@ -103,20 +134,12 @@ final class BrowserViewModel {
 
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
-        clearSearchSuggestions()
+        searchService.clearSearchSuggestions()
         chromeController.expand()
     }
 
     private func addRecentSearch(_ query: String) {
-        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else { return }
-
-        recentSearches.removeAll { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
-        recentSearches.insert(cleaned, at: 0)
-        if recentSearches.count > 20 {
-            recentSearches = Array(recentSearches.prefix(20))
-        }
-        UserDefaults.standard.set(recentSearches, forKey: "recent_searches")
+        searchService.addRecentSearch(query)
     }
 
 
@@ -144,31 +167,19 @@ final class BrowserViewModel {
 
 
     func goBack() {
-        if activeTab?.webView?.canGoBack == true {
-            activeTab?.webView?.goBack()
-            return
-        }
-
-        // No more web history: go back to home/new tab.
-        if activeTab?.url != nil {
-            activeTab?.url = nil
-            activeTab?.title = ""
-            addressBarText = ""
-            isAddressBarFocused = false
-            chromeController.expand()
-        }
+        navigationService.goBack()
     }
 
     func goForward() {
-        activeTab?.webView?.goForward()
+        navigationService.goForward()
     }
 
     func reload() {
-        activeTab?.webView?.reload()
+        navigationService.reload()
     }
 
     func stopLoading() {
-        activeTab?.webView?.stopLoading()
+        navigationService.stopLoading()
     }
 
     func beginTabSwipe(direction: CGFloat) {
