@@ -208,6 +208,61 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         return nil
     }
 
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptAlertPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping () -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .alert,
+                    message: message,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .alert(completionHandler)
+                )
+            )
+        )
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptConfirmPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .confirm,
+                    message: message,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .confirm(completionHandler)
+                )
+            )
+        )
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptTextInputPanelWithPrompt prompt: String,
+        defaultText: String?,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (String?) -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .prompt(defaultText: defaultText),
+                    message: prompt,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .prompt(completionHandler)
+                )
+            )
+        )
+    }
+
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let metrics = WebScrollMetrics(
             offsetY: max(0, scrollView.contentOffset.y + scrollView.adjustedContentInset.top),
@@ -232,5 +287,10 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
     private func shouldOpenExternalURL(for navigationAction: WKNavigationAction) -> Bool {
         navigationAction.targetFrame?.isMainFrame != false
+    }
+
+    private func javascriptDialogSourceHost(frame: WKFrameInfo, webView: WKWebView) -> String {
+        let url = frame.request.url ?? webView.url
+        return url?.displayHost ?? "This Page"
     }
 }
