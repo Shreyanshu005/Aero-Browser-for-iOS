@@ -1,15 +1,8 @@
 
-
-
-
-
-
-
 import WebKit
 
 final class ContentBlocker {
     private var ruleList: WKContentRuleList?
-
 
     private let blockRulesJSON = """
     [

@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import SwiftUI
 import WebKit
 
@@ -31,9 +25,6 @@ final class TabManager {
         tabs.append(tab)
     }
 
-
-
-
     @discardableResult
     func newTab(url: URL? = nil) -> Tab {
         guard tabs.count < TabManager.maxTabs else {
@@ -46,10 +37,8 @@ final class TabManager {
         return tab
     }
 
-
     func closeTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
-
 
         if let wv = tabs[index].webView {
             WebViewPool.shared.enqueue(wv)
@@ -67,7 +56,6 @@ final class TabManager {
             activeTabIndex -= 1
         }
     }
-
 
     func switchToTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
@@ -106,7 +94,6 @@ final class TabManager {
         }
     }
 
-
     func closeAllTabs() {
         for tab in tabs {
             if let wv = tab.webView {
@@ -117,7 +104,6 @@ final class TabManager {
         tabs.removeAll()
         newTab()
     }
-
 
     func loadInActiveTab(url: URL) {
         guard let tab = activeTab else {

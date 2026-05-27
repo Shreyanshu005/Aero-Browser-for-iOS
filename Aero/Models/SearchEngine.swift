@@ -44,7 +44,6 @@ enum URLInput {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .search(trimmed) }
 
-
         if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
             if let url = URL(string: trimmed), url.host != nil {
                 return .url(url)

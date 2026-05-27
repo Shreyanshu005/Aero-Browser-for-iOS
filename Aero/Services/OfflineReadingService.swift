@@ -1,9 +1,3 @@
-//
-//  OfflineReadingService.swift
-//  Aero
-//
-//  Created by Aero on 2026-05-27.
-//
 
 import Foundation
 import Observation
@@ -33,7 +27,6 @@ final class OfflineReadingService {
 
     /// Adds a page to the reading list.
     func addItem(title: String, url: URL, excerpt: String = "") {
-        // Avoid duplicates by URL
         guard !items.contains(where: { $0.url == url }) else { return }
 
         let item = ReadingListItem(title: title, url: url, excerpt: excerpt)

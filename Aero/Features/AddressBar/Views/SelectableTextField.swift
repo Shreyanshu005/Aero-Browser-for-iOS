@@ -52,9 +52,6 @@ struct SelectableTextField: UIViewRepresentable {
         if uiView.text != text { uiView.text = text }
 
         if isFirstResponder, !uiView.isFirstResponder {
-            // The text field may not yet be in a window during the same update cycle.
-            // Dispatching ensures the keyboard opens on first tap, but always re-check
-            // the latest binding value (avoid stale self.isFirstResponder).
             let shouldBeFirstResponder = isFirstResponder
             DispatchQueue.main.async {
                 guard shouldBeFirstResponder else { return }

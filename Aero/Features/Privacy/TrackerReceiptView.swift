@@ -1,16 +1,9 @@
 
-
-
-
-
-
-
 import SwiftUI
 
 struct TrackerReceiptView: View {
     @Bindable var viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
-
 
     private let trackerCategories: [(name: String, icon: String, domains: [String], color: Color)] = [
         ("Advertising", "megaphone.fill", ["doubleclick.net", "googlesyndication.com", "googleadservices.com", "ads.yahoo.com"], AeroColor.error),
@@ -29,12 +22,9 @@ struct TrackerReceiptView: View {
 
                         shieldHeader
 
-
                         securityCard
 
-
                         trackersSection
-
 
                         blockerStatus
                     }
@@ -51,8 +41,6 @@ struct TrackerReceiptView: View {
             }
         }
     }
-
-
 
     private var shieldHeader: some View {
         VStack(spacing: AeroSpacing.md) {
@@ -82,8 +70,6 @@ struct TrackerReceiptView: View {
         }
         .padding(.vertical, AeroSpacing.lg)
     }
-
-
 
     private var securityCard: some View {
         VStack(alignment: .leading, spacing: AeroSpacing.md) {
@@ -115,8 +101,6 @@ struct TrackerReceiptView: View {
             .background(AeroColor.backgroundSecondary, in: RoundedRectangle(cornerRadius: AeroRadius.md))
         }
     }
-
-
 
     private var trackersSection: some View {
         VStack(alignment: .leading, spacing: AeroSpacing.md) {
@@ -153,8 +137,6 @@ struct TrackerReceiptView: View {
             }
         }
     }
-
-
 
     private var blockerStatus: some View {
         VStack(alignment: .leading, spacing: AeroSpacing.md) {

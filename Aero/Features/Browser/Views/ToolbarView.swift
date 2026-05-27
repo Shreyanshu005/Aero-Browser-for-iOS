@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import SwiftUI
 
 struct ToolbarView: View {
@@ -23,7 +17,6 @@ struct ToolbarView: View {
             toolbarButton("plus", enabled: true) {
                 viewModel.tabManager.newTab()
             }
-
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

@@ -1,9 +1,3 @@
-//
-//  UserScriptEngine.swift
-//  Aero
-//
-//  Created by Aero on 2026-05-27.
-//
 
 import Foundation
 import Observation
@@ -67,9 +61,7 @@ final class UserScriptEngine {
     private func matchesAnyPattern(_ patterns: [String], url: URL) -> Bool {
         let urlString = url.absoluteString
         return patterns.contains { pattern in
-            // Wildcard "*://*/*" matches everything
             if pattern == "*://*/*" { return true }
-            // Simple glob-to-regex: escape dots, replace * with .*
             let escaped = pattern
                 .replacingOccurrences(of: ".", with: "\\.")
                 .replacingOccurrences(of: "*", with: ".*")

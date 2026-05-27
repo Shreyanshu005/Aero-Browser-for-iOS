@@ -1,7 +1,3 @@
-// PictureInPictureService.swift
-// Aero
-//
-// Picture-in-Picture video support using AVKit and WebKit.
 
 import AVKit
 import Foundation
@@ -86,7 +82,6 @@ final class PictureInPictureService {
             var v = videos[i];
             var src = v.currentSrc || v.src || '';
 
-            // Try to get source from <source> child elements if main src is empty
             if (!src && v.querySelector('source')) {
                 src = v.querySelector('source').src || '';
             }
@@ -111,7 +106,6 @@ final class PictureInPictureService {
         var videos = Array.from(document.querySelectorAll('video'));
         if (videos.length === 0) return '';
 
-        // Sort by area descending to pick the "main" video
         videos.sort(function(a, b) {
             return (b.videoWidth * b.videoHeight) - (a.videoWidth * a.videoHeight);
         });
@@ -119,7 +113,6 @@ final class PictureInPictureService {
         var v = videos[0];
         var src = v.currentSrc || v.src || '';
 
-        // If blob URL, try to find an underlying <source> with a real URL
         if (src.indexOf('blob:') === 0) {
             var sources = v.querySelectorAll('source');
             for (var i = 0; i < sources.length; i++) {
@@ -129,7 +122,6 @@ final class PictureInPictureService {
                 }
             }
 
-            // Try data attributes that some players use
             var dataAttrs = ['data-src', 'data-url', 'data-video-src'];
             for (var j = 0; j < dataAttrs.length; j++) {
                 var val = v.getAttribute(dataAttrs[j]);
@@ -209,7 +201,6 @@ final class PictureInPictureService {
         let videoURL = try await extractVideoSourceURL(from: webView)
         logger.info("Starting PiP with URL: \(videoURL.absoluteString)")
 
-        // Retrieve current playback position
         let videos = try? await detectVideos(in: webView)
         let currentTime = videos?.first?.currentTime ?? 0
 
@@ -217,7 +208,6 @@ final class PictureInPictureService {
         let avPlayer = AVPlayer(playerItem: playerItem)
         self.player = avPlayer
 
-        // Seek to the position the user was at in the web player
         if currentTime > 0 {
             let seekTime = CMTime(seconds: currentTime, preferredTimescale: 600)
             await avPlayer.seek(to: seekTime)
@@ -231,7 +221,6 @@ final class PictureInPictureService {
         self.activePlayerController = controller
         self.isPiPActive = true
 
-        // Pause the web video so audio doesn't overlap
         try? await webView.evaluateJavaScript(
             "document.querySelectorAll('video').forEach(function(v) { v.pause(); });"
         )

@@ -14,14 +14,12 @@ final class WebViewPool {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = .all
         
-        // Optional: add content blockers or user scripts here
         self.configuration = config
     }
 
     func dequeue() -> WKWebView {
         if !availableWebViews.isEmpty {
             let webView = availableWebViews.removeLast()
-            // Reset state
             webView.stopLoading()
             webView.load(URLRequest(url: URL(string: "about:blank")!))
             webView.customUserAgent = nil
@@ -38,7 +36,6 @@ final class WebViewPool {
     }
 
     func enqueue(_ webView: WKWebView) {
-        // Clean up before putting back in the pool
         webView.stopLoading()
         webView.load(URLRequest(url: URL(string: "about:blank")!))
         webView.customUserAgent = nil

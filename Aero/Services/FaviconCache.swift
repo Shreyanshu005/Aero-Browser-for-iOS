@@ -1,9 +1,3 @@
-//
-//  FaviconCache.swift
-//  Aero
-//
-//  Created on 2026-05-27.
-//
 
 import UIKit
 
@@ -70,7 +64,6 @@ actor FaviconCache {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         self.diskCacheDirectory = cachesDir.appendingPathComponent("Favicons", isDirectory: true)
 
-        // Ensure the disk cache directory exists.
         try? fileManager.createDirectory(at: diskCacheDirectory, withIntermediateDirectories: true)
     }
 
@@ -83,18 +76,15 @@ actor FaviconCache {
     func favicon(for host: String) async -> UIImage? {
         let cacheKey = sanitizedKey(for: host)
 
-        // 1. Check memory cache.
         if let entry = memoryCache.object(forKey: cacheKey as NSString) {
             return entry.image
         }
 
-        // 2. Check disk cache.
         if let diskImage = loadFromDisk(key: cacheKey) {
             memoryCache.setObject(CacheEntry(image: diskImage), forKey: cacheKey as NSString)
             return diskImage
         }
 
-        // 3. Fetch from network.
         guard !inFlightHosts.contains(host) else { return nil }
 
         inFlightHosts.insert(host)
@@ -167,14 +157,12 @@ actor FaviconCache {
     /// 1. Try fetching the page at the host and look for `<link rel="icon">` in the HTML.
     /// 2. Fall back to `https://{host}/favicon.ico`.
     private func fetchFromNetwork(host: String) async -> UIImage? {
-        // Try extracting the icon link from the page HTML.
         if let iconURL = await discoverFaviconURL(for: host) {
             if let image = await downloadImage(from: iconURL) {
                 return image
             }
         }
 
-        // Fallback: try /favicon.ico.
         if let fallbackURL = URL(string: "https://\(host)/favicon.ico") {
             if let image = await downloadImage(from: fallbackURL) {
                 return image
@@ -189,7 +177,6 @@ actor FaviconCache {
         do {
             let (data, response) = try await urlSession.data(from: url)
 
-            // Validate HTTP response.
             if let httpResponse = response as? HTTPURLResponse,
                httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
                 return nil
@@ -208,12 +195,10 @@ actor FaviconCache {
         do {
             var request = URLRequest(url: pageURL)
             request.httpMethod = "GET"
-            // Only fetch the head portion to save bandwidth.
             request.setValue("text/html", forHTTPHeaderField: "Accept")
 
             let (data, _) = try await urlSession.data(for: request)
 
-            // Parse the HTML looking for <link rel="icon" href="..."> or <link rel="shortcut icon" href="...">
             guard let html = String(data: data, encoding: .utf8) else { return nil }
             return extractIconHref(from: html, baseHost: host)
         } catch {
@@ -239,13 +224,11 @@ actor FaviconCache {
         for pattern in patterns {
             guard let relRange = lowered.range(of: pattern) else { continue }
 
-            // Look for the href in the same <link> tag.
             let searchStart = lowered.index(relRange.lowerBound, offsetBy: -200, limitedBy: lowered.startIndex) ?? lowered.startIndex
             let searchEnd = lowered.index(relRange.upperBound, offsetBy: 200, limitedBy: lowered.endIndex) ?? lowered.endIndex
             let tagRegion = String(html[searchStart..<searchEnd])
 
             if let href = extractHrefValue(from: tagRegion) {
-                // Resolve relative URLs.
                 if href.hasPrefix("http://") || href.hasPrefix("https://") {
                     return URL(string: href)
                 } else if href.hasPrefix("//") {

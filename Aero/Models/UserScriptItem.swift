@@ -1,9 +1,3 @@
-//
-//  UserScriptItem.swift
-//  Aero
-//
-//  Created by Aero on 2026-05-27.
-//
 
 import Foundation
 import WebKit

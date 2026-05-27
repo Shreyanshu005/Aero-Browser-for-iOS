@@ -1,9 +1,3 @@
-//
-//  ReaderModeService.swift
-//  Aero
-//
-//  Created on 2026-05-27.
-//
 
 import Foundation
 import WebKit

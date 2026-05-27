@@ -25,7 +25,6 @@ final class BrowserViewModel {
     var chromeController = BrowserChromeController()
     private var contentBlockerApplied: Bool = false
 
-
     var sheetRouter = SheetRouter()
 
     var showMenu: Bool {
@@ -66,7 +65,6 @@ final class BrowserViewModel {
         set { if newValue { sheetRouter.presentFullScreen(.findInPage) } else { sheetRouter.dismissFullScreenCover() } }
     }
 
-
     var activeTab: Tab? { tabManager.activeTab }
     var chromeMode: BottomChromeMode { chromeController.mode }
 
@@ -83,7 +81,6 @@ final class BrowserViewModel {
         self.contentBlocker = ContentBlocker()
 
         self.navigationService = NavigationService(tabManager: self.tabManager, chromeController: self.chromeController)
-
 
         Task {
             await contentBlocker.compileRules()
@@ -109,8 +106,6 @@ final class BrowserViewModel {
             }
         }
     }
-
-
 
     func submitAddressBar() {
         let input = addressBarText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -157,7 +152,6 @@ final class BrowserViewModel {
         }
     }
 
-
     func handleNavigationEvent(_ event: NavigationEvent) {
         switch event {
         case .didFinishLoading:
@@ -178,8 +172,6 @@ final class BrowserViewModel {
             break
         }
     }
-
-
 
     func goBack() {
         navigationService.goBack()

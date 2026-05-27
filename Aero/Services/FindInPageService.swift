@@ -1,9 +1,3 @@
-//
-//  FindInPageService.swift
-//  Aero
-//
-//  Created on 2026-05-27.
-//
 
 import Foundation
 import WebKit
@@ -119,7 +113,6 @@ final class FindInPageService {
 
         let escapedQuery = query.escapedForJavaScript()
 
-        // The third parameter `true` makes `window.find` search backward.
         let js = "window.find('\(escapedQuery)', false, true, true)"
         webView.evaluateJavaScript(js) { [weak self] _, _ in
             guard let self else { return }

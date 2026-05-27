@@ -1,7 +1,3 @@
-// BiometricAuthService.swift
-// Aero
-//
-// Biometric-protected private browsing using LocalAuthentication.
 
 import Foundation
 import LocalAuthentication

@@ -6,7 +6,6 @@ enum GoogleSuggestService {
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            // Response format: [query, [suggestions...], ...]
             let json = try JSONSerialization.jsonObject(with: data, options: [])
             guard let arr = json as? [Any],
                   arr.count >= 2,

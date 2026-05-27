@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import UIKit
 import WebKit
 import Combine
@@ -35,8 +29,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
     deinit {
         observations.removeAll()
     }
-
-
 
     func observeWebView(_ webView: WKWebView) {
 
@@ -113,7 +105,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
 
     private func installPasskeyDetectionIfNeeded(into webView: WKWebView) {
         let ucc = webView.configuration.userContentController
-        // Avoid duplicate handlers/scripts.
         ucc.removeScriptMessageHandler(forName: passkeyMessageName)
         ucc.add(self, name: passkeyMessageName)
 
@@ -141,8 +132,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         ucc.removeAllUserScripts()
         ucc.addUserScript(script)
     }
-
-
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         tab.isLoading = true
@@ -215,8 +204,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
 
         return nil
     }
-
-
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         tab.isLoading = false
@@ -297,9 +284,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         downloadCoordinator.attach(download: download, sourceURL: navigationResponse.response.url)
     }
 
-
-
-
     func webView(
         _ webView: WKWebView,
         createWebViewWith configuration: WKWebViewConfiguration,
@@ -311,8 +295,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         }
         return nil
     }
-
-
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == passkeyMessageName else { return }

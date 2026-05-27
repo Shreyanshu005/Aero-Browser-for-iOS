@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import SwiftUI
 
 struct BrowserView: View {
@@ -16,7 +10,6 @@ struct BrowserView: View {
                 .ignoresSafeArea()
 
             BrowserSurfaceView(viewModel: viewModel)
-
 
             if viewModel.isShowingTabGrid {
                 TabGridView(viewModel: viewModel)

@@ -80,7 +80,6 @@ final class DownloadManager: NSObject {
     }
 
     func cancelDownload(id: UUID) {
-        // Use reverse map for O(1) lookup instead of O(n) scan
         if let task = reverseTaskMap[id] {
             task.cancel()
             activeTasks.removeValue(forKey: task)
@@ -127,7 +126,6 @@ extension DownloadManager: URLSessionDownloadDelegate {
         let destination = downloadsDir.appendingPathComponent(downloads[index].filename)
 
         do {
-            // Remove existing file if present
             if FileManager.default.fileExists(atPath: destination.path) {
                 try FileManager.default.removeItem(at: destination)
             }

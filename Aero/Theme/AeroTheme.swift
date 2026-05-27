@@ -7,16 +7,13 @@ enum AeroColor {
     static let backgroundTertiary  = Color(UIColor.tertiarySystemBackground)
     static let backgroundElevated  = Color(UIColor.secondarySystemGroupedBackground)
 
-
     static let surfaceCard         = Color(UIColor.secondarySystemBackground)
     static let surfaceBorder       = Color(UIColor.separator)
     static let surfaceHover        = Color(UIColor.systemFill)
 
-
     static let accent              = Color.white
     static let accentSecondary     = Color(UIColor.systemGray)
     static let accentTint          = Color(UIColor.label)
-
 
     static let accentCyan          = Color.white
     static let accentBlue          = Color(UIColor.systemGray3)
@@ -27,18 +24,15 @@ enum AeroColor {
     )
     static let accentGlow          = Color.clear
 
-
     static let textPrimary         = Color(UIColor.label)
     static let textSecondary       = Color(UIColor.secondaryLabel)
     static let textTertiary        = Color(UIColor.tertiaryLabel)
     static let textOnAccent        = Color(UIColor.systemBackground)
 
-
     static let success             = Color(UIColor.systemGreen)
     static let warning             = Color(UIColor.systemOrange)
     static let error               = Color(UIColor.systemRed)
     static let secure              = Color(UIColor.systemGreen)
-
 
     static let tabColors: [Color] = [
         Color(UIColor.systemGray),
@@ -49,8 +43,6 @@ enum AeroColor {
         Color(UIColor.systemGray6),
     ]
 }
-
-
 
 enum AeroFont {
     static let urlBar       = Font.system(.body, design: .monospaced, weight: .medium)
@@ -63,8 +55,6 @@ enum AeroFont {
     static let tabTitle     = Font.system(.footnote, design: .default, weight: .medium)
     static let badge        = Font.system(size: 11, weight: .bold, design: .rounded)
 }
-
-
 
 enum AeroSpacing {
     static let xxs: CGFloat = 2
@@ -86,8 +76,6 @@ enum AeroRadius {
     static let card: CGFloat = 14
 }
 
-
-
 enum AeroShadow {
     static let cardShadowColor  = Color.black.opacity(0.1)
     static let cardShadowRadius: CGFloat = 8
@@ -97,8 +85,6 @@ enum AeroShadow {
     static let glowOpacity: Double = 0
 }
 
-
-
 enum AeroAnimation {
     static let snappy   = Animation.spring(duration: 0.3, bounce: 0.15)
     static let smooth   = Animation.spring(duration: 0.4, bounce: 0.1)
@@ -107,14 +93,10 @@ enum AeroAnimation {
     static let fade     = Animation.easeInOut(duration: 0.2)
 }
 
-
-
 enum AeroToolbar {
     static let height:   CGFloat = 44
     static let iconSize: CGFloat = 20
 }
-
-
 
 extension Color {
     init(hex: UInt, opacity: Double = 1.0) {
@@ -127,8 +109,6 @@ extension Color {
         )
     }
 }
-
-
 
 struct GlassMorphic: ViewModifier {
     var cornerRadius: CGFloat = AeroRadius.lg

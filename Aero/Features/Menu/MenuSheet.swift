@@ -1,14 +1,10 @@
 
-
-
 import SwiftUI
 import UIKit
 
 struct MenuSheet: View {
     @Bindable var viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
-
-
 
     var body: some View {
         NavigationStack {
@@ -54,7 +50,6 @@ struct MenuSheet: View {
                     }
                 }
 
-
                 Section {
                     menuButton("clock", "History") {
                         viewModel.showHistory = true
@@ -66,7 +61,6 @@ struct MenuSheet: View {
                         viewModel.showDownloads = true
                     }
                 }
-
 
                 Section {
                     menuButton("shield.lefthalf.filled", "Privacy") {
