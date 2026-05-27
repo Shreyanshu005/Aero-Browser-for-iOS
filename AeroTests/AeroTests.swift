@@ -316,6 +316,27 @@ struct AeroTests {
         #expect(store.savedSessions.last?.activeTabIndex == 0)
     }
 
+    @Test func tabManagerDiscardsWebViewsForReconfigurationWithoutChangingRestorableState() {
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+        let url = URL(string: "https://example.com")!
+        let tab = manager.loadInActiveTabAndReturnActiveTab(url: url)
+        tab.title = "Example"
+        tab.isLoading = true
+        tab.estimatedProgress = 0.5
+        tab.canGoBack = true
+        tab.canGoForward = true
+
+        manager.discardWebViewsForReconfiguration()
+
+        #expect(manager.activeTab?.id == tab.id)
+        #expect(manager.activeTab?.url == url)
+        #expect(manager.activeTab?.title == "Example")
+        #expect(manager.activeTab?.isLoading == false)
+        #expect(manager.activeTab?.estimatedProgress == 0.0)
+        #expect(manager.activeTab?.canGoBack == false)
+        #expect(manager.activeTab?.canGoForward == false)
+    }
+
 }
 
 private final class SpySessionStore: SessionStoring {

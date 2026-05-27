@@ -67,8 +67,7 @@ final class TabManager {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
 
 
-        tabs[index].webView?.stopLoading()
-        tabs[index].webView = nil
+        tabs[index].discardWebView()
 
         tabs.remove(at: index)
 
@@ -99,12 +98,17 @@ final class TabManager {
 
     func closeAllTabs() {
         for tab in tabs {
-            tab.webView?.stopLoading()
-            tab.webView = nil
+            tab.discardWebView()
         }
         tabs.removeAll()
         appendTab()
         saveSession()
+    }
+
+    func discardWebViewsForReconfiguration() {
+        for tab in tabs {
+            tab.discardWebView()
+        }
     }
 
 

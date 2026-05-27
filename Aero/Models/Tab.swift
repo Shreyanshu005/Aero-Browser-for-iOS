@@ -47,15 +47,18 @@ final class Tab: Identifiable {
     }
 
 
-    func createWebView() -> WKWebView {
+    func createWebView(
+        contentBlocker: ContentBlocker,
+        isContentBlockerEnabled: Bool
+    ) -> WKWebView {
         if let existing = webView {
             return existing
         }
 
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        config.defaultWebpagePreferences.allowsContentJavaScript = true
+        let config = BrowserWebViewConfigurationFactory.makeConfiguration(
+            contentBlocker: contentBlocker,
+            isContentBlockerEnabled: isContentBlockerEnabled
+        )
 
         let wv = WKWebView(frame: .zero, configuration: config)
         wv.allowsBackForwardNavigationGestures = true
@@ -63,6 +66,18 @@ final class Tab: Identifiable {
 
         self.webView = wv
         return wv
+    }
+
+    func discardWebView() {
+        webView?.stopLoading()
+        webView?.navigationDelegate = nil
+        webView?.uiDelegate = nil
+        webView?.scrollView.delegate = nil
+        webView = nil
+        isLoading = false
+        estimatedProgress = 0.0
+        canGoBack = false
+        canGoForward = false
     }
 
 

@@ -39,12 +39,14 @@ struct BrowserSurfaceView: View {
             } else {
                 WebViewRepresentable(
                     tab: tab,
+                    contentBlocker: viewModel.contentBlocker,
+                    isContentBlockerEnabled: viewModel.contentBlockerEnabled,
                     chromeMode: viewModel.chromeMode,
                     isAddressBarFocused: viewModel.isAddressBarFocused,
                     safeAreaInsets: safeAreaInsets,
                     onNavigationEvent: viewModel.handleNavigationEvent
                 )
-                .id(tab.id)
+                .id("\(tab.id.uuidString)-\(viewModel.webViewConfigurationRevision)")
                 .transition(.opacity)
                 .ignoresSafeArea(.container, edges: [.top, .bottom])
             }

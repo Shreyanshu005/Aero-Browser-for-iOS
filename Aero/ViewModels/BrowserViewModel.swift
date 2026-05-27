@@ -21,14 +21,21 @@ final class BrowserViewModel {
     var historyStore: HistoryStore
     var favoritesStore: FavoritesStore
     var downloadManager: DownloadManager
-    var contentBlocker: ContentBlocker
+    @ObservationIgnored
+    let contentBlocker: ContentBlocker
 
 
     var isShowingTabGrid: Bool = false
     var isAddressBarFocused: Bool = false
     var addressBarText: String = ""
     var searchEngine: SearchEngine = .google
-    var contentBlockerEnabled: Bool = true
+    var contentBlockerEnabled: Bool = true {
+        didSet {
+            guard oldValue != contentBlockerEnabled else { return }
+            recreateWebViewsForContentBlockerConfigurationChange()
+        }
+    }
+    private(set) var webViewConfigurationRevision: Int = 0
     var chromeController = BrowserChromeController()
 
 
@@ -55,9 +62,7 @@ final class BrowserViewModel {
         self.contentBlocker = ContentBlocker()
 
 
-        Task {
-            await contentBlocker.compileRules()
-        }
+        compileContentBlockerRules()
     }
 
 
@@ -144,5 +149,23 @@ final class BrowserViewModel {
     func cancelPendingDownload(id: UUID) {
         guard pendingDownload?.id == id else { return }
         pendingDownload = nil
+    }
+
+    private func compileContentBlockerRules() {
+        let contentBlocker = self.contentBlocker
+        Task { [weak self, contentBlocker] in
+            let didCompile = await contentBlocker.compileRules()
+            guard didCompile else { return }
+
+            await MainActor.run {
+                guard let self, self.contentBlockerEnabled else { return }
+                self.recreateWebViewsForContentBlockerConfigurationChange()
+            }
+        }
+    }
+
+    private func recreateWebViewsForContentBlockerConfigurationChange() {
+        tabManager.discardWebViewsForReconfiguration()
+        webViewConfigurationRevision += 1
     }
 }

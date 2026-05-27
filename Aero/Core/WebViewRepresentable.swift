@@ -10,13 +10,18 @@ import WebKit
 
 struct WebViewRepresentable: UIViewRepresentable {
     let tab: Tab
+    let contentBlocker: ContentBlocker
+    let isContentBlockerEnabled: Bool
     let chromeMode: BottomChromeMode
     let isAddressBarFocused: Bool
     let safeAreaInsets: EdgeInsets
     let onNavigationEvent: (NavigationEvent) -> Void
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = tab.createWebView()
+        let webView = tab.createWebView(
+            contentBlocker: contentBlocker,
+            isContentBlockerEnabled: isContentBlockerEnabled
+        )
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
 
