@@ -60,6 +60,68 @@ struct AeroTests {
         #expect(controller.mode == .expanded)
     }
 
+    @Test func securitySummaryShowsHTTPSDetailsWithoutClaimingCertificateWhenUnavailable() {
+        let summary = SecuritySummary(url: URL(string: "https://www.example.com/account")!)
+
+        #expect(summary.host == "example.com")
+        #expect(summary.scheme == "HTTPS")
+        #expect(summary.isSecure)
+        #expect(summary.httpsStatus == "Enabled")
+        #expect(summary.certificateStatus == "Not available")
+    }
+
+    @Test func securitySummaryFlagsHTTPAsNotSecure() {
+        let summary = SecuritySummary(url: URL(string: "http://example.com")!)
+
+        #expect(summary.status == .insecureHTTP)
+        #expect(!summary.isSecure)
+        #expect(summary.httpsStatus == "Not enabled")
+        #expect(summary.explanation.contains("not encrypted"))
+    }
+
+    @Test func securitySummaryIncludesMatchingCertificateDetails() {
+        let certificate = CertificateSummary(
+            host: "example.com",
+            subject: "example.com",
+            certificateCount: 2,
+            fingerprintSHA256: "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+        )
+
+        let summary = SecuritySummary(
+            url: URL(string: "https://example.com")!,
+            certificateSummary: certificate
+        )
+
+        #expect(summary.certificateSummary == certificate)
+        #expect(summary.certificateStatus == "example.com")
+        #expect(summary.detailRows.contains { $0.id == "fingerprint" })
+    }
+
+    @Test func securitySummaryIgnoresMismatchedCertificateDetails() {
+        let certificate = CertificateSummary(
+            host: "cdn.example.com",
+            subject: "cdn.example.com",
+            certificateCount: 1,
+            fingerprintSHA256: nil
+        )
+
+        let summary = SecuritySummary(
+            url: URL(string: "https://example.com")!,
+            certificateSummary: certificate
+        )
+
+        #expect(summary.certificateSummary == nil)
+        #expect(summary.certificateStatus == "Not available")
+    }
+
+    @Test func securitySummaryTreatsBrowserPagesAsLocal() {
+        let summary = SecuritySummary(url: URL(string: "aero://new-tab")!)
+
+        #expect(summary.status == .browserPage)
+        #expect(!summary.isSecure)
+        #expect(summary.httpsStatus == "Not applicable")
+    }
+
     @Test func localSuggestionsRankOpenTabsAboveFavoritesAndHistory() {
         let provider = LocalSuggestionProvider()
         let tab = Tab(url: URL(string: "https://example.com")!)
