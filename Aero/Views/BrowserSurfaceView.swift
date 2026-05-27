@@ -33,7 +33,14 @@ struct BrowserSurfaceView: View {
     @ViewBuilder
     private func activePage(safeAreaInsets: EdgeInsets) -> some View {
         if let tab = viewModel.activeTab {
-            if tab.url == nil {
+            if let navigationError = tab.navigationError {
+                ErrorPageView(
+                    error: navigationError,
+                    retryAction: viewModel.retryFailedNavigation,
+                    newTabAction: viewModel.newTab
+                )
+                .transition(.opacity)
+            } else if tab.url == nil {
                 NewTabPage(viewModel: viewModel)
                     .transition(.opacity)
             } else {

@@ -118,6 +118,7 @@ final class TabManager {
             return
         }
 
+        tab.navigationError = nil
         tab.url = url
         tab.webView?.load(URLRequest(url: url))
         saveSession()

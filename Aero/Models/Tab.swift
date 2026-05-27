@@ -13,9 +13,15 @@ final class Tab: Identifiable {
     let id: UUID
     var url: URL?
     var title: String
+    var navigationError: BrowserError?
+
+    var displayURL: URL? {
+        navigationError?.url ?? url
+    }
+
     var displayTitle: String {
         if title.isEmpty {
-            return url?.displayHost ?? "New Tab"
+            return displayURL?.displayHost ?? "New Tab"
         }
         return title
     }

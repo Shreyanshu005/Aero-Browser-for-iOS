@@ -164,6 +164,64 @@ struct AeroTests {
         #expect(controller.mode == .expanded)
     }
 
+    @Test func browserErrorUsesFailingURLAndFriendlyOfflineMessage() {
+        let requestedURL = URL(string: "https://requested.example")!
+        let failingURL = URL(string: "https://offline.example/path")!
+        let error = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorNotConnectedToInternet,
+            userInfo: [NSURLErrorFailingURLErrorKey: failingURL]
+        )
+
+        let browserError = BrowserError(error: error, url: requestedURL)
+
+        #expect(browserError.kind == .offline)
+        #expect(browserError.url == failingURL)
+        #expect(browserError.title == "You're offline")
+        #expect(browserError.message == "Check your internet connection, then try again.")
+        #expect(browserError.displayHost == "offline.example")
+    }
+
+    @Test func browserErrorDoesNotDisplayCancelledNavigation() {
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
+
+        #expect(BrowserError.shouldDisplay(error: error) == false)
+    }
+
+    @Test func navigationFailureSetsAndClearsTabError() {
+        let viewModel = BrowserViewModel()
+        viewModel.tabManager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+        let url = URL(string: "https://missing.example")!
+        viewModel.tabManager.loadInActiveTab(url: url)
+
+        viewModel.handleNavigationEvent(
+            .didFailLoading(NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotFindHost))
+        )
+
+        #expect(viewModel.activeTab?.navigationError?.kind == .cannotFindServer)
+        #expect(viewModel.activeTab?.navigationError?.url == url)
+
+        viewModel.handleNavigationEvent(.didStartLoading)
+
+        #expect(viewModel.activeTab?.navigationError == nil)
+    }
+
+    @Test func tabManagerClearsNavigationErrorWhenLoadingURL() {
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+        let firstURL = URL(string: "https://offline.example")!
+        let nextURL = URL(string: "https://example.com")!
+        let tab = manager.loadInActiveTabAndReturnActiveTab(url: firstURL)
+        tab.navigationError = BrowserError(
+            error: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet),
+            url: firstURL
+        )
+
+        manager.loadInActiveTab(url: nextURL)
+
+        #expect(tab.navigationError == nil)
+        #expect(tab.url == nextURL)
+    }
+
     @Test func localSuggestionsRankOpenTabsAboveFavoritesAndHistory() {
         let provider = LocalSuggestionProvider()
         let tab = Tab(url: URL(string: "https://example.com")!)
