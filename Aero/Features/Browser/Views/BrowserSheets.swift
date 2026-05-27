@@ -7,33 +7,42 @@ struct BrowserSheets: ViewModifier {
         content
             .sheet(isPresented: $viewModel.showMenu) {
                 MenuSheet(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showHistory) {
                 HistoryView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showBookmarks) {
                 BookmarksView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showDownloads) {
                 DownloadsView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showSettings) {
                 SettingsView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showReaderMode) {
                 ReaderModeView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showAddBookmark) {
                 AddBookmarkSheet(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showTrackerReceipt) {
                 TrackerReceiptView(viewModel: viewModel)
+                    .browserSheetPresentation()
             }
             .sheet(item: $viewModel.pendingDownload) { pendingDownload in
                 DownloadConfirmationSheet(
                     pendingDownload: pendingDownload,
                     viewModel: viewModel
                 )
+                .browserSheetPresentation()
             }
             .sheet(
                 item: $viewModel.pendingJavaScriptDialog,
@@ -45,6 +54,7 @@ struct BrowserSheets: ViewModifier {
                     request: request,
                     viewModel: viewModel
                 )
+                .browserSheetPresentation()
             }
     }
 }
