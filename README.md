@@ -1,79 +1,123 @@
-# Aero: A Premium Browsing Experience for iOS
+# Aero
 
-**Native. Minimalist. Secure.**
+Aero is a browser for iPhone built with SwiftUI and WebKit. It focuses on a clean interface, smooth navigation, and privacy features while keeping the experience simple and native to iOS.
 
-Aero is a state-of-the-art iOS browser built from the ground up using **SwiftUI** and **WebKit**. It redefines the mobile browsing experience by combining a sleek, glassmorphic design language with advanced navigation features and robust privacy protection.
-
----
-
-## 🌟 The Aero Vision
-
-In a world of cluttered browsers, Aero focuses on what matters most: your content. By moving navigation to the bottom and utilizing native iOS system materials, Aero provides a distraction-free environment that feels like a natural extension of iOS.
-
-## ✨ High-Performance Features
-
-### 🧩 Intelligent Navigation
-- **Bottom-Aligned Smart Bar**: A unified interaction point for URLs and search, designed for effortless one-handed use.
-- **Dynamic Controls**: Haptic-enabled toolbar that adapts to your browsing state.
-- **Seamless Gestures**: Native back/forward navigation gestures integrated with custom WebKit coordination.
-
-### 🗂 Advanced Tab Management
-- **Visual Grid Overview**: A high-performance tab grid with real-time snapshots.
-- **Intelligent Lifecycle**: Efficient memory management supporting up to 100 concurrent tabs.
-- **Native Navigation**: Standard iOS toolbar patterns for intuitive tab creation and switching.
-
-### 🛡 Privacy & Security
-- **Content Shield**: Integrated tracker and advertisement blocking powered by `WKContentRuleList`.
-- **Privacy Dashboard**: Real-time insights into connection security and blocked trackers.
-- **Zero-Footprint Mode**: Easily clear cookies, history, and website data with a single tap.
-
-### 📖 Productivity & Utility
-- **Optimized Reader Mode**: Distraction-free reading with configurable serif typography and adjustable font sizes.
-- **Native Find-in-Page**: Fast, highlighted search within any webpage.
-- **Background Download Manager**: Robust file downloading with progress tracking and persistent local storage.
+The project explores modern iOS design patterns and browser architecture using Apple's frameworks.
 
 ---
 
-## 🛠 Engineering & Architecture
+## Preview
 
-Aero follows a modern, layered architecture to ensure scalability and performance.
+<p align="center">
+  <img src="https://i.ibb.co/ntWpG1H/IMG-5122.png" width="180" />
+  <img src="https://i.ibb.co/39GL6yF9/IMG-5123.png" width="180" />
+  <img src="https://i.ibb.co/TBbKC9Mx/IMG-5124.png" width="180" />
+</p>
+
+<p align="center">
+  <img src="https://i.ibb.co/LX96bwsz/IMG-5125.png" width="180" />
+  <img src="https://i.ibb.co/qMZsYK2q/IMG-5126.png" width="180" />
+</p>
+
+---
+
+## Overview
+
+Most mobile browsers try to fit many features into a small screen. Aero takes a simpler approach by focusing on browsing comfort, readable layouts, and easy one handed navigation.
+
+The interface uses native iOS materials and places important controls within thumb reach so browsing feels natural on iPhone.
+
+---
+
+## Features
+
+### Navigation
+
+- Bottom address and search bar for easier one handed use
+- Combined URL and search input
+- Smooth back and forward gestures
+- Haptic feedback for navigation actions
+- Adaptive toolbar controls based on browsing state
+
+### Tabs
+
+- Grid based tab overview with live previews
+- Support for multiple active tabs with memory management
+- Simple tab switching and creation using familiar iOS patterns
+
+### Privacy
+
+- Built in tracker and ad blocking using `WKContentRuleList`
+- Privacy information for websites and blocked trackers
+- Clear browsing data, cookies, and history with one action
+
+### Reading and Utility
+
+- Reader mode for distraction free reading
+- Adjustable typography and font size controls
+- Find in page support
+- Background file downloads with progress tracking
+
+---
+
+## Architecture
+
+Aero uses a layered structure to keep the codebase organized and maintainable.
 
 | Layer | Responsibility |
-| :--- | :--- |
-| **UI Shell** | SwiftUI views with native glassmorphic materials. |
-| **Core Engine** | Advanced `WKWebView` bridging and coordination. |
-| **State Layer** | Centralized coordination using the Swift **@Observable** macro. |
-| **Data & Storage** | Persistent JSON-based storage for History and Favorites. |
-| **Privacy Layer** | Asynchronous rule compilation and tracker filtration. |
-
-### Technical Highlights
-- **Target**: iOS 17.0+
-- **Framework**: SwiftUI (100% Native)
-- **Engine**: WebKit
-- **Design**: Native Apple Design Language (SF Symbols, System Materials)
+| --- | --- |
+| UI | SwiftUI based interface using native system materials |
+| Browser Engine | WebKit integration and navigation coordination |
+| State Management | Shared app state using Swift `@Observable` |
+| Storage | JSON based persistence for history and bookmarks |
+| Privacy | Content blocking and tracker filtering |
 
 ---
 
-## 📂 Project Roadmap
+## Technical Details
 
-- [ ] **AI Summarization**: Intelligent webpage summaries using local models.
-- [ ] **CloudKit Sync**: Securely sync bookmarks and history across devices.
-- [ ] **Extension Support**: Native Safari-compatible extension bridge.
-- [ ] **Advanced Fingerprinting Protection**: Enhanced privacy layers for anonymous browsing.
-
-## 📦 Build & Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/Shreyanshu005/Aero-Browser-for-iOS.git
-   ```
-2. **Open the project**:
-   Navigate to the directory and open `Aero.xcodeproj`.
-3. **Build**:
-   Select an iOS 17.0+ device/simulator and press `⌘R`.
+- Platform: iOS 17 and later
+- Framework: SwiftUI
+- Browser Engine: WebKit
+- Language: Swift
+- Design System: SF Symbols and native iOS materials
 
 ---
 
-*Aero is an open-source exploration of premium mobile interface design and modern Swift technologies.*
+## Roadmap
 
-**Designed and Built by [Shreyanshu](https://github.com/Shreyanshu005)**
+Planned features include:
+
+- AI based webpage summaries
+- CloudKit sync for bookmarks and history
+- Support for Safari style extensions
+- Improved fingerprinting protection
+
+---
+
+## Getting Started
+
+### Clone the repository
+
+```bash
+git clone https://github.com/Shreyanshu005/Aero-Browser-for-iOS.git
+```
+
+### Open the project
+
+```bash
+cd Aero-Browser-for-iOS
+open Aero.xcodeproj
+```
+
+### Build and run
+
+Build and run the project using an iOS 17 simulator or device.
+
+---
+
+## About
+
+Aero is an open source project focused on building a modern iOS browsing experience with SwiftUI and WebKit.
+
+Built by Shreyanshu.
