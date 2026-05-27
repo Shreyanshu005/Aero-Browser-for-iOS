@@ -59,7 +59,23 @@ struct MenuSheet: View {
                 }
 
 
+                if viewModel.canReopenLastClosedTab {
+                    Section {
+                        menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
+                            viewModel.reopenLastClosedTab()
+                            dismiss()
+                        }
+                    }
+                }
+
+
                 Section {
+                    menuButton("eye.slash", "New Private Tab") {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            viewModel.newPrivateTab()
+                        }
+                    }
                     menuButton("clock", "History") {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -94,16 +110,20 @@ struct MenuSheet: View {
                             viewModel.showSettings = true
                         }
                     }
+                    .accessibilityIdentifier("browser.menu.settings")
                 }
             }
+            .accessibilityIdentifier("browser.menu.list")
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("browser.menu.done")
                 }
             }
         }
+        .accessibilityIdentifier("browser.menu.sheet")
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

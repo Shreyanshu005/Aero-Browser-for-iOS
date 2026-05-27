@@ -48,7 +48,7 @@ struct TabCardView: View {
                     Image(systemName: "safari")
                         .font(.system(size: 42, weight: .ultraLight))
                         .foregroundStyle(.white.opacity(0.18))
-                    Text(tab.url?.host ?? "New Tab")
+                    Text(tab.displayURL?.host ?? "New Tab")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.25))
                 }

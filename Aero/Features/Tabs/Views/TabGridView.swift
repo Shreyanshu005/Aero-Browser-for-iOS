@@ -14,7 +14,7 @@ struct TabGridView: View {
     @State private var isVerticalInteracting = false
     @State private var isDismissing = false
 
-    private var tabs: [Tab] { viewModel.tabManager.tabs }
+    private var tabs: [Tab] { viewModel.tabManager.tabs(in: viewModel.activeBrowsingMode) }
 
     private enum DragAxis { case undecided, horizontal, vertical }
 
@@ -123,7 +123,7 @@ struct TabGridView: View {
             .simultaneousGesture(horizontalPagingGesture(maxOff: maxOff))
             .onAppear {
                 if let activeID = viewModel.activeTab?.id,
-                   let i = viewModel.tabManager.tabs.firstIndex(where: { $0.id == activeID }) {
+                   let i = tabs.firstIndex(where: { $0.id == activeID }) {
                     offset = CGFloat(i) * cardStep
                 } else {
                     offset = 0
@@ -320,9 +320,9 @@ struct TabGridView: View {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            if let removedIndex = viewModel.tabManager.tabs.firstIndex(where: { $0.id == tab.id }) {
+            if let removedIndex = tabs.firstIndex(where: { $0.id == tab.id }) {
                 let currentFrontIndex = Int((offset / cardStep).rounded())
-                    .clamped(to: 0...max(viewModel.tabManager.tabs.count - 1, 0))
+                    .clamped(to: 0...max(tabs.count - 1, 0))
                 viewModel.closeTab(tab)
                 if removedIndex < currentFrontIndex {
                     offset = max(0, offset - cardStep)
@@ -331,7 +331,7 @@ struct TabGridView: View {
                 viewModel.closeTab(tab)
             }
 
-            let maxOff = max(0, CGFloat(max(viewModel.tabManager.tabs.count - 1, 0)) * cardStep)
+            let maxOff = max(0, CGFloat(max(tabs.count - 1, 0)) * cardStep)
             offset = offset.clamped(to: 0...maxOff)
             dragStart = offset
 
@@ -340,7 +340,7 @@ struct TabGridView: View {
             isVerticalInteracting = false
             isDismissing = false
 
-            if viewModel.tabManager.tabs.isEmpty { viewModel.hideTabGrid() }
+            if tabs.isEmpty { viewModel.hideTabGrid() }
         }
     }
 }

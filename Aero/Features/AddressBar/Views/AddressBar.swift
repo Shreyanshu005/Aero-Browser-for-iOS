@@ -30,11 +30,9 @@ struct AddressBar: View {
                 .padding(.vertical, 2)
             } else {
                 HStack(spacing: 6) {
-                    if viewModel.activeTab?.isSecure == true {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(AeroColor.secure)
-                    }
+                    Image(systemName: iconName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(iconColor)
 
                     Text(displayText)
                         .font(.system(.body, weight: .medium))
@@ -130,7 +128,7 @@ struct AddressBar: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.secondary)
             }
-        } else if viewModel.activeTab?.url != nil {
+        } else if viewModel.activeTab?.displayURL != nil {
             Button { viewModel.reload() } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 13, weight: .medium))
@@ -140,7 +138,7 @@ struct AddressBar: View {
     }
 
     private var displayText: String {
-        if let url = viewModel.activeTab?.url {
+        if let url = viewModel.activeTab?.displayURL {
             return url.displayHost ?? url.absoluteString
         }
         return "Search or enter URL"
@@ -164,13 +162,27 @@ struct AddressBar: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(viewModel.activeTab?.url == nil)
-            .opacity(viewModel.activeTab?.url == nil ? 0.35 : 1.0)
+            .disabled(viewModel.activeTab?.displayURL == nil)
+            .opacity(viewModel.activeTab?.displayURL == nil ? 0.35 : 1.0)
         }
     }
 
     private var displayTextColor: Color {
-        viewModel.activeTab?.url != nil ? .white : Color.white.opacity(0.55)
+        viewModel.activeTab?.displayURL != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
+    }
+
+    private var iconName: String {
+        if viewModel.activeTab?.navigationError != nil { return "exclamationmark.triangle.fill" }
+        if viewModel.activeTab?.isPrivate == true { return "eye.slash" }
+        if viewModel.activeTab?.isSecure == true { return "lock.fill" }
+        if viewModel.activeTab?.displayURL != nil { return "globe" }
+        return "magnifyingglass"
+    }
+
+    private var iconColor: Color {
+        if viewModel.activeTab?.navigationError != nil { return AeroColor.warning }
+        if viewModel.activeTab?.isSecure == true { return AeroColor.secure }
+        return Color(UIColor.secondaryLabel)
     }
 
     private func shareCurrentPage() {

@@ -13,9 +13,13 @@ final class HistoryStore {
     private(set) var items: [HistoryItem] = []
     private let fileURL: URL
 
-    init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        self.fileURL = docs.appendingPathComponent("aero_history.json")
+    init(fileURL: URL? = nil) {
+        if let fileURL {
+            self.fileURL = fileURL
+        } else {
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            self.fileURL = docs.appendingPathComponent("aero_history.json")
+        }
         loadFromDisk()
     }
 

@@ -29,6 +29,23 @@ struct BrowserSheets: ViewModifier {
             .sheet(isPresented: $viewModel.showTrackerReceipt) {
                 TrackerReceiptView(viewModel: viewModel)
             }
+            .sheet(item: $viewModel.pendingDownload) { pendingDownload in
+                DownloadConfirmationSheet(
+                    pendingDownload: pendingDownload,
+                    viewModel: viewModel
+                )
+            }
+            .sheet(
+                item: $viewModel.pendingJavaScriptDialog,
+                onDismiss: {
+                    viewModel.javaScriptDialogDidDismiss()
+                }
+            ) { request in
+                JavaScriptDialogSheet(
+                    request: request,
+                    viewModel: viewModel
+                )
+            }
     }
 }
 
