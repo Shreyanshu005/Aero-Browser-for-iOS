@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// Represents a web page saved for offline reading.

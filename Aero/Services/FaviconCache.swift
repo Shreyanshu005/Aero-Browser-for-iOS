@@ -1,4 +1,3 @@
-
 import UIKit
 
 /// Thread-safe actor-based LRU favicon cache with three lookup tiers:

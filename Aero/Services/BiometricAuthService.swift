@@ -1,4 +1,3 @@
-
 import Foundation
 import LocalAuthentication
 import os.log

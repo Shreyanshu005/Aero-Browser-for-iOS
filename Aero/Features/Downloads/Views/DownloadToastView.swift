@@ -39,4 +39,3 @@ struct DownloadToastView: View {
         .padding(.horizontal, AeroSpacing.lg)
     }
 }
-

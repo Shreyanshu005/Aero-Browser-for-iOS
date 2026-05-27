@@ -1,4 +1,3 @@
-
 import WebKit
 
 final class ContentBlocker {

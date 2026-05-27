@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// Protocol for services that provide search query autocompletion suggestions.

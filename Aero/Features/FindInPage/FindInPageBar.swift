@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct FindInPageBar: View {

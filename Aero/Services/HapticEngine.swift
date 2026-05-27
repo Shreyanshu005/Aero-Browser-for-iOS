@@ -1,4 +1,3 @@
-
 import UIKit
 
 /// Centralized haptic feedback manager to avoid creating and discarding generator instances.

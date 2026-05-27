@@ -17,4 +17,3 @@ final class ScrollCoordinator: NSObject, UIScrollViewDelegate {
         onScroll(metrics)
     }
 }
-

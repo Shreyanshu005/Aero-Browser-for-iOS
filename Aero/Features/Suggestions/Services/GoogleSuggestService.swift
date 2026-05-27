@@ -27,4 +27,3 @@ enum GoogleSuggestService {
         return components?.url
     }
 }
-

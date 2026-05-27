@@ -1,4 +1,3 @@
-
 import WebKit
 
 /// Protocol defining the interface for content blocking services.

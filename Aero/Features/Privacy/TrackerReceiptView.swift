@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct TrackerReceiptView: View {

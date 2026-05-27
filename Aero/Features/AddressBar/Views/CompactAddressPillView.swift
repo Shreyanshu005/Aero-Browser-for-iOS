@@ -61,4 +61,3 @@ struct CompactAddressPillView: View {
         return Color(UIColor.secondaryLabel)
     }
 }
-
