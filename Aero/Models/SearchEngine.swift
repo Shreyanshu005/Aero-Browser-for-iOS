@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import Foundation
 
 enum SearchEngine: String, CaseIterable, Codable {
@@ -43,12 +36,9 @@ enum SearchEngine: String, CaseIterable, Codable {
     }
 }
 
-
-
 enum URLInput {
     case url(URL)
     case search(String)
-
 
     static func classify(_ input: String) -> URLInput {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -61,14 +51,12 @@ enum URLInput {
             }
         }
 
-
         if !trimmed.contains(" ") && trimmed.contains(".") {
             let withScheme = "https://\(trimmed)"
             if let url = URL(string: withScheme), url.host != nil {
                 return .url(url)
             }
         }
-
 
         return .search(trimmed)
     }

@@ -1,12 +1,4 @@
-
-
-
-
-
-
-
 import Foundation
-
 extension URL {
 
     var displayHost: String? {
