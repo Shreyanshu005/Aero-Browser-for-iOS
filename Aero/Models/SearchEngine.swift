@@ -14,9 +14,9 @@ enum SearchEngine: String, CaseIterable, Codable {
 
     var searchURLTemplate: String {
         switch self {
-        case .google:     return "https://www.google.com/search?q=%@"
-        case .duckDuckGo: return "https://duckduckgo.com/?q=%@"
-        case .bing:       return "https://www.bing.com/search?q=%@"
+        case .google:     return "https://www.google.com/search"
+        case .duckDuckGo: return "https://duckduckgo.com/"
+        case .bing:       return "https://www.bing.com/search"
         }
     }
 
@@ -37,9 +37,9 @@ enum SearchEngine: String, CaseIterable, Codable {
     }
 
     func searchURL(for query: String) -> URL? {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        let urlString = String(format: searchURLTemplate, encoded)
-        return URL(string: urlString)
+        guard var components = URLComponents(string: searchURLTemplate.replacingOccurrences(of: "%@", with: "")) else { return nil }
+        components.queryItems = [URLQueryItem(name: "q", value: query)]
+        return components.url
     }
 }
 

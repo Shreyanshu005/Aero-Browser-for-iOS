@@ -10,8 +10,8 @@ import WebKit
 
 @Observable
 final class TabManager {
-    var tabs: [Tab] = []
-    var activeTabIndex: Int = 0
+    private(set) var tabs: [Tab] = []
+    private(set) var activeTabIndex: Int = 0
 
     static let maxTabs = 100
 

@@ -55,38 +55,36 @@ struct TabGridView: View {
             ZStack {
                 ForEach(Array(tabs.enumerated().reversed()), id: \.element.id) { (index: Int, tab: Tab) in
                     let depth = CGFloat(index) - offset / cardStep
-                    guard depth > -3.0 && depth < CGFloat(maxCards) else { return AnyView(EmptyView()) }
+                    if depth > -3.0 && depth < CGFloat(maxCards) {
+                        let isFront = depth > -0.5 && depth < 0.5
 
-                    let isFront = depth > -0.5 && depth < 0.5
-
-                    let xOffset: CGFloat = {
-                        if depth < 0 { return -depth * cardStep }
-                        let basePeek = -depth * stackPeek
-                        if depth > 0 && fraction > 0.75 {
-                            let distToNextFront = depth - (1.0 - fraction)
-                            if distToNextFront > 0 && distToNextFront < 1 {
-                                let pull = (fraction - 0.75) / 0.25
-                                return basePeek * (1.0 - pull)
+                        let xOffset: CGFloat = {
+                            if depth < 0 { return -depth * cardStep }
+                            let basePeek = -depth * stackPeek
+                            if depth > 0 && fraction > 0.75 {
+                                let distToNextFront = depth - (1.0 - fraction)
+                                if distToNextFront > 0 && distToNextFront < 1 {
+                                    let pull = (fraction - 0.75) / 0.25
+                                    return basePeek * (1.0 - pull)
+                                }
                             }
-                        }
-                        return basePeek
-                    }()
+                            return basePeek
+                        }()
 
-                    let yOffset: CGFloat = {
-                        let stackY = max(0, depth) * stackPeek * 0.5
-                        return tab.id == verticalDragTabID ? stackY + verticalDrag : stackY
-                    }()
+                        let yOffset: CGFloat = {
+                            let stackY = max(0, depth) * stackPeek * 0.5
+                            return tab.id == verticalDragTabID ? stackY + verticalDrag : stackY
+                        }()
 
-                    let scale: CGFloat = max(0.75, 1.0 - max(0, depth) * depthScale)
+                        let scale: CGFloat = max(0.75, 1.0 - max(0, depth) * depthScale)
 
-                    let opacity: CGFloat = {
-                        if depth < 0 { return 1.0 }
-                        let limit = CGFloat(maxCards - 1)
-                        if depth >= limit { return max(0, 1.0 - (depth - limit + 1)) }
-                        return 1.0
-                    }()
+                        let opacity: CGFloat = {
+                            if depth < 0 { return 1.0 }
+                            let limit = CGFloat(maxCards - 1)
+                            if depth >= limit { return max(0, 1.0 - (depth - limit + 1)) }
+                            return 1.0
+                        }()
 
-                    return AnyView(
                         VStack(spacing: 6) {
                             TabCardHeaderView(tab: tab, isFront: isFront)
                                 .frame(width: cardW, height: headerH, alignment: .leading)
@@ -94,27 +92,27 @@ struct TabGridView: View {
                             TabCardView(tab: tab, isActive: isFront)
                                 .frame(width: cardW, height: cardH)
                         }
-                            .scaleEffect(x: 1.0, y: scale, anchor: .top)
-                            .offset(x: xOffset, y: yOffset)
-                            .opacity(opacity)
-                            .zIndex(Double(tabs.count - index))
-                            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                            .allowsHitTesting(depth >= -0.5 && depth < CGFloat(maxCards))
-                            .onTapGesture {
-                                guard !isVerticalInteracting else { return }
-                                if isFront {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    viewModel.selectTab(tab)
-                                } else {
-                                    let target = CGFloat(index) * cardStep
-                                    withAnimation(.interactiveSpring(response: 0.32, dampingFraction: 0.86)) {
-                                        offset = target
-                                    }
-                                    dragStart = target
+                        .scaleEffect(x: 1.0, y: scale, anchor: .top)
+                        .offset(x: xOffset, y: yOffset)
+                        .opacity(opacity)
+                        .zIndex(Double(tabs.count - index))
+                        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        .allowsHitTesting(depth >= -0.5 && depth < CGFloat(maxCards))
+                        .onTapGesture {
+                            guard !isVerticalInteracting else { return }
+                            if isFront {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                viewModel.selectTab(tab)
+                            } else {
+                                let target = CGFloat(index) * cardStep
+                                withAnimation(.interactiveSpring(response: 0.32, dampingFraction: 0.86)) {
+                                    offset = target
                                 }
+                                dragStart = target
                             }
-                            .simultaneousGesture(verticalDismissGesture(for: tab))
-                    )
+                        }
+                        .simultaneousGesture(verticalDismissGesture(for: tab))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -345,8 +343,4 @@ struct TabGridView: View {
     }
 }
 
-extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(max(self, range.lowerBound), range.upperBound)
-    }
-}
+

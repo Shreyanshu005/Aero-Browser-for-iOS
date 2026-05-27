@@ -31,6 +31,12 @@ In a world of cluttered browsers, Aero focuses on what matters most: your conten
 - **Optimized Reader Mode**: Distraction-free reading with configurable serif typography and adjustable font sizes.
 - **Native Find-in-Page**: Fast, highlighted search within any webpage.
 - **Background Download Manager**: Robust file downloading with progress tracking and persistent local storage.
+- **Advanced Features**: 
+  - **Biometric Private Tabs**: LocalAuthentication protected tabs.
+  - **Page Profiler**: Real-time performance profiling for web pages.
+  - **UserScripts**: Injected JavaScript engine for custom site logic.
+  - **Offline Reading**: Save pages for offline consumption.
+  - **Smart Tab Deduplication**: Automatically deduplicate identical tabs.
 
 ---
 
@@ -41,10 +47,11 @@ Aero follows a modern, layered architecture to ensure scalability and performanc
 | Layer | Responsibility |
 | :--- | :--- |
 | **UI Shell** | SwiftUI views with native glassmorphic materials. |
-| **Core Engine** | Advanced `WKWebView` bridging and coordination. |
-| **State Layer** | Centralized coordination using the Swift **@Observable** macro. |
-| **Data & Storage** | Persistent JSON-based storage for History and Favorites. |
-| **Privacy Layer** | Asynchronous rule compilation and tracker filtration. |
+| **Service Layer** | Domain-specific services (`SearchService`, `NavigationService`, `PrivacyService`). |
+| **Coordinator Layer** | Thin coordinators (`DownloadCoordinator`, `ScrollCoordinator`, `ThemeExtractor`). |
+| **State Layer** | Centralized coordination using the Swift **@Observable** macro (`BrowserViewModel`). |
+| **Data & Storage** | Persistent JSON-based storage for History and Favorites with debounced I/O. |
+| **Advanced Features** | Custom services for PiP, Biometric Auth, UserScripts, and Offline Reading. |
 
 ### Technical Highlights
 - **Target**: iOS 17.0+
