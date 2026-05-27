@@ -59,6 +59,7 @@ final class BrowserViewModel {
     var showTrackerReceipt: Bool = false
     var pendingDownload: PendingDownload?
     var pendingJavaScriptDialog: JavaScriptDialogRequest?
+    var pendingLinkActionRequest: LinkActionRequest?
 
 
     var activeTab: Tab? { tabManager.activeTab }
@@ -169,6 +170,8 @@ final class BrowserViewModel {
             requestDownload(pendingDownload)
         case .didRequestJavaScriptDialog(let request):
             requestJavaScriptDialog(request)
+        case .didRequestLinkActions(let request):
+            requestLinkActions(request)
         case .didScroll(let metrics):
             guard activeTab?.url != nil,
                   isAddressBarFocused == false,
@@ -295,6 +298,49 @@ final class BrowserViewModel {
     func cancelPendingDownload(id: UUID) {
         guard pendingDownload?.id == id else { return }
         pendingDownload = nil
+    }
+
+    func requestLinkActions(_ request: LinkActionRequest) {
+        pendingLinkActionRequest = request
+        isAddressBarFocused = false
+        clearSearchSuggestions()
+        chromeController.expand()
+    }
+
+    func openPendingLinkInNewTab(id: UUID) {
+        openPendingLink(id: id, browsingMode: .standard)
+    }
+
+    func openPendingLinkInPrivateTab(id: UUID) {
+        openPendingLink(id: id, browsingMode: .privateBrowsing)
+    }
+
+    func dismissPendingLinkActions(id: UUID) {
+        guard pendingLinkActionRequest?.id == id else { return }
+        pendingLinkActionRequest = nil
+    }
+
+    func linkActionsDidDismiss() {
+        pendingLinkActionRequest = nil
+    }
+
+    private func openPendingLink(id: UUID, browsingMode: BrowsingMode) {
+        guard let request = pendingLinkActionRequest, request.id == id else { return }
+
+        let tab: Tab
+        if browsingMode == .privateBrowsing {
+            tab = tabManager.newPrivateTab(url: request.url)
+        } else {
+            tab = tabManager.newTab(url: request.url, browsingMode: .standard)
+        }
+
+        tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
+        tabManager.loadInActiveTab(url: request.url)
+        pendingLinkActionRequest = nil
+        isAddressBarFocused = false
+        clearSearchSuggestions()
+        syncAddressBarWithActiveTab()
+        chromeController.expand()
     }
 
     private func compileContentBlockerRules() {

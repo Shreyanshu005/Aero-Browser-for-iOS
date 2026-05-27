@@ -36,6 +36,17 @@ struct BrowserSheets: ViewModifier {
                 )
             }
             .sheet(
+                item: $viewModel.pendingLinkActionRequest,
+                onDismiss: {
+                    viewModel.linkActionsDidDismiss()
+                }
+            ) { request in
+                LinkActionsSheet(
+                    request: request,
+                    viewModel: viewModel
+                )
+            }
+            .sheet(
                 item: $viewModel.pendingJavaScriptDialog,
                 onDismiss: {
                     viewModel.javaScriptDialogDidDismiss()
