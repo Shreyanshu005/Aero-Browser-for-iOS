@@ -118,8 +118,12 @@ struct MenuSheet: View {
                 }
             }
             .accessibilityIdentifier("browser.menu.list")
+            .listStyle(.insetGrouped)
+            .browserSheetListBackground()
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.regularMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -147,8 +151,35 @@ struct MenuSheet: View {
     @ViewBuilder
     private func menuButton(_ icon: String, _ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
-                .foregroundStyle(Color(UIColor.label))
+            Label {
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(AeroColor.textPrimary)
+            } icon: {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(AeroColor.textPrimary)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.sm, style: .continuous))
+            }
+            .labelStyle(.titleAndIcon)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+        .listRowBackground(menuRowBackground)
+    }
+
+    private var menuRowBackground: some View {
+        RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
+            .fill(.regularMaterial)
+            .overlay {
+                RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
+                    .stroke(AeroColor.surfaceBorder.opacity(0.35), lineWidth: 0.5)
+            }
+            .padding(.vertical, 1)
     }
 }
