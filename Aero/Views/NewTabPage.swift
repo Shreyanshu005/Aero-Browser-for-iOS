@@ -30,6 +30,7 @@ struct NewTabPage: View {
                         Text(viewModel.activeTab?.isPrivate == true ? "Private" : "Aero")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(Color(UIColor.label))
+                            .accessibilityIdentifier("browser.newTab.title")
                     }
                     .opacity(appeared ? 1 : 0)
 
@@ -40,7 +41,9 @@ struct NewTabPage: View {
                 }
                 .padding(.horizontal, AeroSpacing.xl)
             }
+            .accessibilityIdentifier("browser.newTab.scrollView")
         }
+        .accessibilityIdentifier("browser.newTab.page")
         .onAppear {
             withAnimation(.easeOut(duration: 0.4)) {
                 appeared = true
@@ -54,6 +57,7 @@ struct NewTabPage: View {
                 .font(.footnote)
                 .foregroundStyle(Color(UIColor.secondaryLabel))
                 .textCase(.uppercase)
+                .accessibilityIdentifier("browser.newTab.favoritesTitle")
 
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 76, maximum: 90), spacing: AeroSpacing.lg)],
@@ -92,6 +96,7 @@ struct NewTabPage: View {
                 }
             }
         }
+        .accessibilityIdentifier("browser.newTab.favorites")
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 15)
     }
