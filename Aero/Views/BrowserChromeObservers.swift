@@ -7,21 +7,21 @@ struct BrowserChromeObservers: ViewModifier {
         content
             .onChange(of: viewModel.isAddressBarFocused) { _, isFocused in
                 if isFocused {
-                    viewModel.expandChromeForInteraction()
+                    viewModel.chromeController.expand()
                 }
             }
             .onChange(of: viewModel.showFindInPage) { _, isShowing in
                 if isShowing {
-                    viewModel.expandChromeForInteraction()
+                    viewModel.chromeController.expand()
                 }
             }
             .onChange(of: viewModel.showMenu) { _, isShowing in
                 if isShowing {
-                    viewModel.expandChromeForInteraction()
+                    viewModel.chromeController.expand()
                 }
             }
             .onChange(of: viewModel.activeTab?.id) { _, _ in
-                viewModel.expandChromeForInteraction()
+                viewModel.chromeController.expand()
                 viewModel.refreshContentBlocking()
             }
             .onChange(of: viewModel.contentBlockerEnabled) { _, _ in
@@ -29,7 +29,7 @@ struct BrowserChromeObservers: ViewModifier {
             }
             .onChange(of: viewModel.activeTab?.url) { _, newURL in
                 if newURL == nil {
-                    viewModel.expandChromeForInteraction()
+                    viewModel.chromeController.expand()
                 }
             }
     }

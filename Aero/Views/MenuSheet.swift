@@ -44,9 +44,9 @@ struct MenuSheet: View {
                             viewModel.showMenu = false
                             if let webView = viewModel.activeTab?.webView {
                                 if isDesktopSiteEnabled {
-                                    PrivacyService.shared.resetUserAgent(on: webView)
+                                    PrivacyService.resetUserAgent(on: webView)
                                 } else {
-                                    PrivacyService.shared.setDesktopUserAgent(on: webView)
+                                    PrivacyService.setDesktopUserAgent(on: webView)
                                 }
                                 viewModel.reload()
                             }
@@ -90,7 +90,7 @@ struct MenuSheet: View {
     }
 
     private var isDesktopSiteEnabled: Bool {
-        viewModel.activeTab?.webView?.customUserAgent == PrivacyService.shared.desktopUserAgent
+        viewModel.activeTab?.webView?.customUserAgent == PrivacyService.desktopUserAgent
     }
 
     private var desktopToggleTitle: String {

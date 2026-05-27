@@ -36,7 +36,8 @@ struct BottomBrowserChromeView: View {
                 if viewModel.isAddressBarFocused {
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        viewModel.dismissSearchPresentation()
+                        viewModel.isAddressBarFocused = false
+                        viewModel.searchService.clearSearchSuggestions()
                     } label: {
                         Text("Cancel")
                             .font(.system(.body, weight: .semibold))
@@ -81,7 +82,7 @@ struct BottomBrowserChromeView: View {
                 guard value.translation.height < -56,
                       abs(value.translation.height) > abs(value.translation.width) else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.showTabGrid()
+                viewModel.isShowingTabGrid = true
             }
     }
 }

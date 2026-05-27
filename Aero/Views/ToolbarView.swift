@@ -21,13 +21,13 @@ struct ToolbarView: View {
             }
 
             toolbarButton("plus", enabled: true) {
-                viewModel.newTab()
+                viewModel.tabManager.newTab()
             }
 
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                viewModel.showTabGrid()
+                viewModel.isShowingTabGrid = true
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: 5)

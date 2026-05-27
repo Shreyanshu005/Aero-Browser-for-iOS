@@ -28,7 +28,7 @@ final class TabStatePersistence {
         let persistedTabs = tabs.map { tab in
             PersistedTab(
                 id: tab.id,
-                url: tab.url?.absoluteString,
+                urlString: tab.url?.absoluteString,
                 title: tab.title,
                 lastAccessedAt: tab.lastAccessedAt
             )

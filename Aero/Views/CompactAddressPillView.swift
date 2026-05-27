@@ -6,7 +6,8 @@ struct CompactAddressPillView: View {
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            viewModel.expandChromeForInteraction(focusAddressBar: true)
+            viewModel.isAddressBarFocused = true
+            viewModel.chromeController.expand()
         } label: {
             HStack(spacing: AeroSpacing.sm) {
                 Image(systemName: iconName)
@@ -38,7 +39,7 @@ struct CompactAddressPillView: View {
                 guard value.translation.height < -56,
                       abs(value.translation.height) > abs(value.translation.width) else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.showTabGrid()
+                viewModel.isShowingTabGrid = true
             }
     }
 

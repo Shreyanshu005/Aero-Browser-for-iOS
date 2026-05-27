@@ -42,7 +42,7 @@ struct SettingsView: View {
 
                     Button("Clear Cookies & Data", role: .destructive) {
                         Task {
-                            await PrivacyService.shared.clearAllWebsiteData()
+                            await PrivacyService.clearAllWebsiteData()
                         }
                     }
                 }

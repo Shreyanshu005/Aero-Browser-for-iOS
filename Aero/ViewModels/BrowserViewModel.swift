@@ -21,7 +21,7 @@ final class BrowserViewModel {
     var downloadManager: DownloadManager
     var contentBlocker: ContentBlocker
 
-    private(set) lazy var navigationService = NavigationService(tabManager: tabManager, chromeController: chromeController)
+    private(set) var navigationService: NavigationService!
 
     var isShowingTabGrid: Bool = false
     var isAddressBarFocused: Bool = false
@@ -88,6 +88,8 @@ final class BrowserViewModel {
         self.downloadManager = DownloadManager()
         self.contentBlocker = ContentBlocker()
 
+        self.navigationService = NavigationService(tabManager: self.tabManager, chromeController: self.chromeController)
+
 
         Task {
             await contentBlocker.compileRules()
@@ -140,6 +142,25 @@ final class BrowserViewModel {
 
     private func addRecentSearch(_ query: String) {
         searchService.addRecentSearch(query)
+    }
+
+    func navigateToSearchSuggestion(_ suggestion: String) {
+        addressBarText = suggestion
+        submitAddressBar()
+    }
+
+    func fillAddressBar(with text: String) {
+        addressBarText = text
+    }
+
+    func syncAddressBarWithActiveTab() {
+        if !isAddressBarFocused {
+            if let url = activeTab?.url {
+                addressBarText = url.absoluteString
+            } else {
+                addressBarText = ""
+            }
+        }
     }
 
 

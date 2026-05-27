@@ -102,7 +102,9 @@ struct TabGridView: View {
                             guard !isVerticalInteracting else { return }
                             if isFront {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                viewModel.selectTab(tab)
+                                viewModel.tabManager.switchToTab(id: tab.id)
+                                viewModel.syncAddressBarWithActiveTab()
+                                viewModel.isShowingTabGrid = false
                             } else {
                                 let target = CGFloat(index) * cardStep
                                 withAnimation(.interactiveSpring(response: 0.32, dampingFraction: 0.86)) {
@@ -195,7 +197,7 @@ struct TabGridView: View {
         HStack {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.newTab()
+                viewModel.tabManager.newTab()
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 18, weight: .semibold))
@@ -205,7 +207,7 @@ struct TabGridView: View {
                     .environment(\.colorScheme, .dark)
             }
             Spacer()
-            Button { viewModel.hideTabGrid() } label: {
+            Button { viewModel.isShowingTabGrid = false } label: {
                 Text("Done")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.white)
@@ -321,12 +323,12 @@ struct TabGridView: View {
             if let removedIndex = viewModel.tabManager.tabs.firstIndex(where: { $0.id == tab.id }) {
                 let currentFrontIndex = Int((offset / cardStep).rounded())
                     .clamped(to: 0...max(viewModel.tabManager.tabs.count - 1, 0))
-                viewModel.closeTab(tab)
+                viewModel.tabManager.closeTab(id: tab.id)
                 if removedIndex < currentFrontIndex {
                     offset = max(0, offset - cardStep)
                 }
             } else {
-                viewModel.closeTab(tab)
+                viewModel.tabManager.closeTab(id: tab.id)
             }
 
             let maxOff = max(0, CGFloat(max(viewModel.tabManager.tabs.count - 1, 0)) * cardStep)
@@ -338,7 +340,7 @@ struct TabGridView: View {
             isVerticalInteracting = false
             isDismissing = false
 
-            if viewModel.tabManager.tabs.isEmpty { viewModel.hideTabGrid() }
+            if viewModel.tabManager.tabs.isEmpty { viewModel.isShowingTabGrid = false }
         }
     }
 }

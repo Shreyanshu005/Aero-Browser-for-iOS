@@ -27,7 +27,8 @@ struct SearchSuggestionsOverlayView: View {
         }
         .ignoresSafeArea(.keyboard)
         .onTapGesture {
-            viewModel.dismissSearchPresentation()
+            viewModel.isAddressBarFocused = false
+            viewModel.searchService.clearSearchSuggestions()
         }
     }
 }
