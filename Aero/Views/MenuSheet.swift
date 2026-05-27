@@ -8,7 +8,7 @@ struct MenuSheet: View {
     @Bindable var viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
 
-    private static let desktopUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"
+
 
     var body: some View {
         NavigationStack {
@@ -17,43 +17,39 @@ struct MenuSheet: View {
                 if viewModel.activeTab?.url != nil {
                     Section {
                         menuButton("magnifyingglass", "Find in Page") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showFindInPage = true
-                            }
+                            viewModel.showMenu = false
+                            viewModel.showFindInPage = true
                         }
                         menuButton("safari", "Open in Safari") {
+                            viewModel.showMenu = false
                             if let url = viewModel.activeTab?.url {
                                 UIApplication.shared.open(url)
                             }
-                            dismiss()
                         }
                         menuButton("doc.plaintext", "Reader Mode") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showReaderMode = true
-                            }
+                            viewModel.showMenu = false
+                            viewModel.showReaderMode = true
                         }
                         menuButton("bookmark", "Add Bookmark") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showAddBookmark = true
-                            }
+                            viewModel.showMenu = false
+                            viewModel.showAddBookmark = true
                         }
                         menuButton("doc.on.doc", "Copy Link") {
+                            viewModel.showMenu = false
                             if let url = viewModel.activeTab?.url {
                                 UIPasteboard.general.string = url.absoluteString
                             }
-                            dismiss()
                         }
                         menuButton(desktopToggleIcon, desktopToggleTitle) {
-                            if isDesktopSiteEnabled {
-                                viewModel.activeTab?.webView?.customUserAgent = nil
-                            } else {
-                                viewModel.activeTab?.webView?.customUserAgent = Self.desktopUserAgent
+                            viewModel.showMenu = false
+                            if let webView = viewModel.activeTab?.webView {
+                                if isDesktopSiteEnabled {
+                                    PrivacyService.shared.resetUserAgent(on: webView)
+                                } else {
+                                    PrivacyService.shared.setDesktopUserAgent(on: webView)
+                                }
+                                viewModel.reload()
                             }
-                            viewModel.reload()
-                            dismiss()
                         }
                     }
                 }
@@ -61,38 +57,23 @@ struct MenuSheet: View {
 
                 Section {
                     menuButton("clock", "History") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showHistory = true
-                        }
+                        viewModel.showHistory = true
                     }
                     menuButton("bookmark.fill", "Bookmarks") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showBookmarks = true
-                        }
+                        viewModel.showBookmarks = true
                     }
                     menuButton("arrow.down.circle", "Downloads") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showDownloads = true
-                        }
+                        viewModel.showDownloads = true
                     }
                 }
 
 
                 Section {
                     menuButton("shield.lefthalf.filled", "Privacy") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showTrackerReceipt = true
-                        }
+                        viewModel.showTrackerReceipt = true
                     }
                     menuButton("gearshape", "Settings") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showSettings = true
-                        }
+                        viewModel.showSettings = true
                     }
                 }
             }
@@ -109,7 +90,7 @@ struct MenuSheet: View {
     }
 
     private var isDesktopSiteEnabled: Bool {
-        viewModel.activeTab?.webView?.customUserAgent == Self.desktopUserAgent
+        viewModel.activeTab?.webView?.customUserAgent == PrivacyService.shared.desktopUserAgent
     }
 
     private var desktopToggleTitle: String {
