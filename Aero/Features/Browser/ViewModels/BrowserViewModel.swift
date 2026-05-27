@@ -15,6 +15,10 @@ final class BrowserViewModel {
     var downloadManager: DownloadManager
     var contentBlocker: ContentBlocker
 
+    var offlineService = OfflineReadingService()
+    var pageProfiler = PagePerformanceProfiler()
+    var biometricAuth = BiometricAuthService()
+
     private(set) var navigationService: NavigationService!
 
     var isShowingTabGrid: Bool = false
@@ -79,6 +83,8 @@ final class BrowserViewModel {
         self.favoritesStore = FavoritesStore()
         self.downloadManager = DownloadManager()
         self.contentBlocker = ContentBlocker()
+
+        self.pageProfiler.isEnabled = true
 
         self.navigationService = NavigationService(tabManager: self.tabManager, chromeController: self.chromeController)
 

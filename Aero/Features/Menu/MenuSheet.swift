@@ -35,6 +35,18 @@ struct MenuSheet: View {
                                 UIPasteboard.general.string = url.absoluteString
                             }
                         }
+                        menuButton("square.and.arrow.down", "Save for Offline") {
+                            viewModel.showMenu = false
+                            if let url = viewModel.activeTab?.url, let title = viewModel.activeTab?.title {
+                                viewModel.offlineService.addItem(title: title, url: url, excerpt: "Saved for offline reading")
+                            }
+                        }
+                        menuButton("speedometer", "Profile Page") {
+                            viewModel.showMenu = false
+                            if let webView = viewModel.activeTab?.webView {
+                                Task { await viewModel.pageProfiler.profile(webView: webView) }
+                            }
+                        }
                         menuButton(desktopToggleIcon, desktopToggleTitle) {
                             viewModel.showMenu = false
                             if let webView = viewModel.activeTab?.webView {

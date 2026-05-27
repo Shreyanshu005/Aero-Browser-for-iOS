@@ -207,6 +207,19 @@ struct TabGridView: View {
                     .environment(\.colorScheme, .dark)
             }
             Spacer()
+            Button {
+                Task {
+                    let _ = await viewModel.biometricAuth.unlockIfNeeded()
+                }
+            } label: {
+                Image(systemName: viewModel.biometricAuth.isPrivateBrowsingUnlocked ? "lock.open.fill" : "lock.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(viewModel.biometricAuth.isPrivateBrowsingUnlocked ? Color.green : Color.white)
+                    .frame(width: 48, height: 48)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .environment(\.colorScheme, .dark)
+            }
+            Spacer()
             Button { viewModel.isShowingTabGrid = false } label: {
                 Text("Done")
                     .font(.system(size: 15, weight: .medium))
