@@ -24,6 +24,7 @@ final class Tab: Identifiable {
     var canGoBack: Bool = false
     var canGoForward: Bool = false
     var isSecure: Bool = false
+    var siteStatus: SiteStatus
     var snapshot: UIImage?
     var favicon: UIImage?
     let createdAt: Date
@@ -42,8 +43,38 @@ final class Tab: Identifiable {
         self.id = UUID()
         self.url = url
         self.title = title
+        let isSecure = url?.isSecure ?? false
+        self.isSecure = isSecure
+        self.siteStatus = SiteStatus(url: url, isSecureConnection: isSecure)
         self.createdAt = createdAt
         self.lastAccessedAt = lastAccessedAt
+    }
+
+    func updatePageStatus(url: URL?, isSecure: Bool) {
+        self.url = url
+        self.isSecure = isSecure
+
+        var status = siteStatus
+        status.updatePage(url: url, isSecureConnection: isSecure)
+        siteStatus = status
+    }
+
+    func updateContentBlockerStatus(isEnabled: Bool) {
+        var status = siteStatus
+        status.updateContentBlocker(isEnabled: isEnabled)
+        siteStatus = status
+    }
+
+    func recordMediaCaptureRequest(_ type: SiteMediaCaptureType) {
+        var status = siteStatus
+        status.recordMediaCaptureRequest(type)
+        siteStatus = status
+    }
+
+    func recordPopupAttempt() {
+        var status = siteStatus
+        status.recordPopupAttempt()
+        siteStatus = status
     }
 
 

@@ -28,7 +28,11 @@ final class BrowserViewModel {
     var isAddressBarFocused: Bool = false
     var addressBarText: String = ""
     var searchEngine: SearchEngine = .google
-    var contentBlockerEnabled: Bool = true
+    var contentBlockerEnabled: Bool = true {
+        didSet {
+            refreshSiteStatuses()
+        }
+    }
     var chromeController = BrowserChromeController()
 
 
@@ -54,6 +58,7 @@ final class BrowserViewModel {
         self.downloadManager = DownloadManager()
         self.contentBlocker = ContentBlocker()
 
+        refreshSiteStatuses()
 
         Task {
             await contentBlocker.compileRules()
@@ -144,5 +149,11 @@ final class BrowserViewModel {
     func cancelPendingDownload(id: UUID) {
         guard pendingDownload?.id == id else { return }
         pendingDownload = nil
+    }
+
+    private func refreshSiteStatuses() {
+        for tab in tabManager.tabs {
+            tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
+        }
     }
 }

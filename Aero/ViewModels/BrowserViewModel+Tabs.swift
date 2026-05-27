@@ -22,7 +22,8 @@ extension BrowserViewModel {
     }
 
     func newTab() {
-        tabManager.newTab()
+        let tab = tabManager.newTab()
+        tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
         chromeController.expand()
         hideTabGrid()
         addressBarText = ""

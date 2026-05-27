@@ -53,8 +53,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         observations.append(
             webView.observe(\.url, options: .new) { [weak self] wv, _ in
                 DispatchQueue.main.async {
-                    self?.tab.url = wv.url
-                    self?.tab.isSecure = wv.url?.isSecure ?? false
+                    self?.tab.updatePageStatus(url: wv.url, isSecure: wv.url?.isSecure ?? false)
                     self?.onNavigationEvent(.didUpdateURL(wv.url))
                 }
             }
@@ -177,9 +176,21 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if navigationAction.targetFrame == nil || !(navigationAction.targetFrame!.isMainFrame) {
+            tab.recordPopupAttempt()
             webView.load(navigationAction.request)
         }
         return nil
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        tab.recordMediaCaptureRequest(type.siteMediaCaptureType)
+        decisionHandler(.prompt)
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -202,5 +213,20 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
         let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition") ?? ""
         return disposition.localizedCaseInsensitiveContains("attachment")
+    }
+}
+
+private extension WKMediaCaptureType {
+    var siteMediaCaptureType: SiteMediaCaptureType {
+        switch self {
+        case .camera:
+            return .camera
+        case .microphone:
+            return .microphone
+        case .cameraAndMicrophone:
+            return .cameraAndMicrophone
+        @unknown default:
+            return .cameraAndMicrophone
+        }
     }
 }

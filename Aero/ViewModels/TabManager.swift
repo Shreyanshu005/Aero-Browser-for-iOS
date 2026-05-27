@@ -114,7 +114,7 @@ final class TabManager {
             return
         }
 
-        tab.url = url
+        tab.updatePageStatus(url: url, isSecure: url.isSecure)
         tab.webView?.load(URLRequest(url: url))
         saveSession()
     }
