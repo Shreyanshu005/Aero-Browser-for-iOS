@@ -1,25 +1,21 @@
-
-
-
-
-
-
-
 import SwiftUI
+import SwiftData
 
 struct BookmarksView: View {
     @Bindable var viewModel: BrowserViewModel
     @State private var showingAddSheet = false
     @Environment(\.dismiss) private var dismiss
 
+    @Query(sort: \FavoriteItem.title) private var favorites: [FavoriteItem]
+
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.favoritesStore.favorites.isEmpty {
+                if favorites.isEmpty {
                     ContentUnavailableView("No Bookmarks", systemImage: "bookmark", description: Text("Save your favorite pages here"))
                 } else {
                     List {
-                        ForEach(viewModel.favoritesStore.favorites) { bookmark in
+                        ForEach(favorites) { bookmark in
                             Button {
                                 viewModel.tabManager.loadInActiveTab(url: bookmark.url)
                                 dismiss()
@@ -29,7 +25,7 @@ struct BookmarksView: View {
                         }
                         .onDelete { indexSet in
                             for index in indexSet {
-                                viewModel.favoritesStore.remove(id: viewModel.favoritesStore.favorites[index].id)
+                                viewModel.favoritesStore.remove(id: favorites[index].id)
                             }
                         }
                     }

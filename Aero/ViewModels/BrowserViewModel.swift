@@ -9,6 +9,7 @@ import SwiftUI
 import WebKit
 
 @Observable
+@MainActor
 final class BrowserViewModel {
 
     private(set) var searchService = SearchService()

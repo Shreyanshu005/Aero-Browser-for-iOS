@@ -1,13 +1,14 @@
 import Foundation
-import Observation
+import SwiftData
 import os
 
 private let logger = Logger(subsystem: "com.aero.browser", category: "FavoritesStore")
 
-struct FavoriteItem: Identifiable, Codable, Hashable {
-    let id: UUID
-    let title: String
-    let url: URL
+@Model
+final class FavoriteItem: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var url: URL
 
     init(title: String, url: URL) {
         self.id = UUID()
@@ -22,37 +23,35 @@ struct FavoriteItem: Identifiable, Codable, Hashable {
 
 @Observable
 final class FavoritesStore {
-    private(set) var favorites: [FavoriteItem] = []
-    private let fileURL: URL
-    private var saveTask: Task<Void, Never>?
+    private let context: ModelContext
 
+    @MainActor
     init() {
-        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            logger.error("Failed to locate documents directory")
-            self.fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("aero_favorites.json")
-            return
-        }
-        self.fileURL = docs.appendingPathComponent("aero_favorites.json")
-        loadFromDisk()
-
-        if favorites.isEmpty {
+        self.context = StorageProvider.shared.container.mainContext
+        
+        let fetchDescriptor = FetchDescriptor<FavoriteItem>()
+        if let count = try? context.fetchCount(fetchDescriptor), count == 0 {
             seedDefaults()
         }
     }
 
+    @MainActor
     func add(title: String, url: URL) {
         let item = FavoriteItem(title: title, url: url)
-        favorites.append(item)
-        debouncedSave()
+        context.insert(item)
+        try? context.save()
     }
 
+    @MainActor
     func remove(id: UUID) {
-        favorites.removeAll { $0.id == id }
-        debouncedSave()
+        let fetchDescriptor = FetchDescriptor<FavoriteItem>(predicate: #Predicate { $0.id == id })
+        if let items = try? context.fetch(fetchDescriptor), let item = items.first {
+            context.delete(item)
+            try? context.save()
+        }
     }
 
-    // MARK: - Private
-
+    @MainActor
     private func seedDefaults() {
         let defaults: [(String, String)] = [
             ("Google",   "https://www.google.com"),
@@ -65,42 +64,10 @@ final class FavoritesStore {
 
         for (title, urlString) in defaults {
             if let url = URL(string: urlString) {
-                favorites.append(FavoriteItem(title: title, url: url))
+                let item = FavoriteItem(title: title, url: url)
+                context.insert(item)
             }
         }
-        debouncedSave()
-    }
-
-    /// Debounced save: coalesces rapid mutations into a single disk write.
-    private func debouncedSave() {
-        saveTask?.cancel()
-        saveTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second debounce
-            guard !Task.isCancelled else { return }
-            await self?.performSave()
-        }
-    }
-
-    @MainActor
-    private func performSave() {
-        let favoritesCopy = favorites
-        Task.detached(priority: .utility) {
-            do {
-                let data = try JSONEncoder().encode(favoritesCopy)
-                try data.write(to: self.fileURL, options: .atomic)
-            } catch {
-                logger.error("Failed to save favorites: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    private func loadFromDisk() {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        do {
-            let data = try Data(contentsOf: fileURL)
-            favorites = try JSONDecoder().decode([FavoriteItem].self, from: data)
-        } catch {
-            logger.error("Failed to load favorites: \(error.localizedDescription)")
-        }
+        try? context.save()
     }
 }

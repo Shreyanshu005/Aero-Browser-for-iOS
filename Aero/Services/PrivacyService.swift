@@ -27,6 +27,7 @@ enum PrivacyService {
     ///
     /// This removes cookies, caches, local storage, IndexedDB, service workers,
     /// and all other data types tracked by WebKit.
+    @MainActor
     static func clearAllWebsiteData() async {
         let dataStore = WKWebsiteDataStore.default()
         let allTypes = WKWebsiteDataStore.allWebsiteDataTypes()
@@ -35,6 +36,7 @@ enum PrivacyService {
     }
 
     /// Clears only cookies from the default `WKWebsiteDataStore`.
+    @MainActor
     static func clearCookies() async {
         let dataStore = WKWebsiteDataStore.default()
         let cookieTypes: Set<String> = [WKWebsiteDataTypeCookies]
@@ -43,6 +45,7 @@ enum PrivacyService {
     }
 
     /// Clears only cached data (disk and memory caches) from the default `WKWebsiteDataStore`.
+    @MainActor
     static func clearCache() async {
         let dataStore = WKWebsiteDataStore.default()
         let cacheTypes: Set<String> = [
@@ -56,6 +59,7 @@ enum PrivacyService {
     /// Clears the browsing history using the provided history store.
     ///
     /// - Parameter store: The `HistoryStore` instance whose history should be cleared.
+    @MainActor
     static func clearHistory(using store: HistoryStore) {
         store.clearHistory()
     }

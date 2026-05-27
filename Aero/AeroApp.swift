@@ -15,6 +15,7 @@ struct AeroApp: App {
         WindowGroup {
             BrowserView(viewModel: viewModel)
                 .tint(Color(UIColor.label))
+                .modelContainer(StorageProvider.shared.container)
         }
     }
 }

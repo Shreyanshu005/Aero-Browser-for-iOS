@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 
 @Observable
+@MainActor
 final class Tab: Identifiable {
     let id: UUID
     var url: URL?
@@ -39,15 +40,7 @@ final class Tab: Identifiable {
             return existing
         }
 
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        config.defaultWebpagePreferences.allowsContentJavaScript = true
-
-        let wv = WKWebView(frame: .zero, configuration: config)
-        wv.allowsBackForwardNavigationGestures = true
-        wv.scrollView.contentInsetAdjustmentBehavior = .never
-        wv.scrollView.alwaysBounceVertical = true
+        let wv = WebViewPool.shared.dequeue()
         wv.isOpaque = false
         wv.backgroundColor = .clear
         wv.scrollView.backgroundColor = .clear

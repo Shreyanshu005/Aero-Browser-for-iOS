@@ -9,6 +9,7 @@ import SwiftUI
 import WebKit
 
 @Observable
+@MainActor
 final class TabManager {
     private(set) var tabs: [Tab] = []
     private(set) var activeTabIndex: Int = 0
@@ -50,7 +51,9 @@ final class TabManager {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
 
 
-        tabs[index].webView?.stopLoading()
+        if let wv = tabs[index].webView {
+            WebViewPool.shared.enqueue(wv)
+        }
         tabs[index].webView = nil
 
         tabs.remove(at: index)
@@ -106,7 +109,9 @@ final class TabManager {
 
     func closeAllTabs() {
         for tab in tabs {
-            tab.webView?.stopLoading()
+            if let wv = tab.webView {
+                WebViewPool.shared.enqueue(wv)
+            }
             tab.webView = nil
         }
         tabs.removeAll()

@@ -6,10 +6,13 @@
 
 
 import SwiftUI
+import SwiftData
 
 struct NewTabPage: View {
     @Bindable var viewModel: BrowserViewModel
     @State private var appeared = false
+    
+    @Query(sort: \FavoriteItem.title) private var favorites: [FavoriteItem]
 
     var body: some View {
         ZStack {
@@ -37,7 +40,7 @@ struct NewTabPage: View {
                 columns: [GridItem(.adaptive(minimum: 76, maximum: 90), spacing: AeroSpacing.lg)],
                 spacing: AeroSpacing.xl
             ) {
-                ForEach(viewModel.favoritesStore.favorites) { fav in
+                ForEach(favorites) { fav in
                     Button {
                         viewModel.tabManager.loadInActiveTab(url: fav.url)
                     } label: {

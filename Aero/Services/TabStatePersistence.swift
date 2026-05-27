@@ -12,6 +12,7 @@ struct PersistedTab: Codable, Identifiable {
 }
 
 @Observable
+@MainActor
 final class TabStatePersistence {
     private let fileURL: URL
     private var saveTask: Task<Void, Never>?

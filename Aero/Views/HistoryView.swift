@@ -1,34 +1,51 @@
-
-
-
-
-
-
-
 import SwiftUI
+import SwiftData
 
 struct HistoryView: View {
     @Bindable var viewModel: BrowserViewModel
     @State private var searchText = ""
     @Environment(\.dismiss) private var dismiss
 
-    private var filteredGroups: [(key: String, items: [HistoryItem])] {
+    @Query(sort: \HistoryItem.visitDate, order: .reverse) private var allItems: [HistoryItem]
+
+    private var filteredItems: [HistoryItem] {
         if searchText.isEmpty {
-            return viewModel.historyStore.groupedByDay()
+            return allItems
+        } else {
+            let lowered = searchText.lowercased()
+            return allItems.filter {
+                $0.title.lowercased().contains(lowered) ||
+                $0.url.absoluteString.lowercased().contains(lowered)
+            }
         }
-        let results = viewModel.historyStore.search(query: searchText)
-        if results.isEmpty { return [] }
-        return [("Search Results", results)]
+    }
+
+    private var groupedItems: [(key: String, items: [HistoryItem])] {
+        let items = filteredItems
+        if items.isEmpty { return [] }
+        if !searchText.isEmpty {
+            return [("Search Results", items)]
+        }
+
+        let grouped = Dictionary(grouping: items, by: { $0.dayKey })
+        let sortedKeys = grouped.keys.sorted { k1, k2 in
+            if k1 == "Today" { return true }
+            if k2 == "Today" { return false }
+            if k1 == "Yesterday" { return true }
+            if k2 == "Yesterday" { return false }
+            return k1 > k2
+        }
+        return sortedKeys.map { (key: $0, items: grouped[$0] ?? []) }
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.historyStore.items.isEmpty {
+                if allItems.isEmpty {
                     ContentUnavailableView("No History", systemImage: "clock", description: Text("Pages you visit will appear here"))
                 } else {
                     List {
-                        ForEach(filteredGroups, id: \.key) { group in
+                        ForEach(groupedItems, id: \.key) { group in
                             Section(group.key) {
                                 ForEach(group.items) { item in
                                     Button {
@@ -59,7 +76,7 @@ struct HistoryView: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !viewModel.historyStore.items.isEmpty {
+                    if !allItems.isEmpty {
                         Button("Clear", role: .destructive) {
                             viewModel.historyStore.clearHistory()
                         }

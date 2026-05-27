@@ -1,10 +1,13 @@
 import Foundation
 
-struct HistoryItem: Identifiable, Codable, Hashable {
-    let id: UUID
-    let url: URL
-    let title: String
-    let visitDate: Date
+import SwiftData
+
+@Model
+final class HistoryItem: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
+    var url: URL
+    var title: String
+    var visitDate: Date
 
     init(url: URL, title: String, visitDate: Date = Date()) {
         self.id = UUID()

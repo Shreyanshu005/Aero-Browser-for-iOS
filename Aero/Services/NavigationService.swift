@@ -1,6 +1,7 @@
 import Foundation
 
 @Observable
+@MainActor
 final class NavigationService {
     var tabManager: TabManager
     var chromeController: BrowserChromeController

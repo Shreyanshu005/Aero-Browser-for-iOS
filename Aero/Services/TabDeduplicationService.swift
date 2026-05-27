@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum TabDeduplicationService {
     static func findDuplicate(url: URL, in tabs: [Tab], excluding tabID: UUID? = nil) -> Tab? {
         let normalizedTarget = normalizeURL(url)
