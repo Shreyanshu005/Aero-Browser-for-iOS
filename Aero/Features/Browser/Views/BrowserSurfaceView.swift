@@ -19,13 +19,14 @@ struct BrowserSurfaceView: View {
                 }
 
                 ZStack(alignment: .bottom) {
-                    Color(uiColor: viewModel.activeTab?.pageBackgroundColor ?? UIColor.systemBackground)
-                        .frame(height: proxy.safeAreaInsets.top)
-                        .frame(maxWidth: .infinity, alignment: .top)
-                        .ignoresSafeArea(.container, edges: [.top])
-
                     activePage(safeAreaInsets: proxy.safeAreaInsets, width: proxy.size.width)
                         .simultaneousGesture(backForwardEdgeSwipeGesture(viewWidth: proxy.size.width))
+
+                    safeAreaGlassFill
+                        .frame(height: proxy.safeAreaInsets.top)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .ignoresSafeArea(.container, edges: [.top])
+                        .allowsHitTesting(false)
 
                     if let indicator = edgeSwipeIndicator {
                         edgeSwipeIndicatorView(indicator)
@@ -77,7 +78,7 @@ struct BrowserSurfaceView: View {
     private var bottomChromeInset: some View {
         if viewModel.chromeMode == .compact {
             ZStack {
-                Color(UIColor.systemGray6)
+                safeAreaGlassFill
                     .overlay(alignment: .top) {
                         Divider().opacity(0.5)
                     }
@@ -92,6 +93,21 @@ struct BrowserSurfaceView: View {
             BottomBrowserChromeView(viewModel: viewModel)
                 .ignoresSafeArea(.container, edges: [.bottom])
         }
+    }
+
+    @ViewBuilder
+    private var safeAreaGlassFill: some View {
+#if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            Rectangle()
+                .fill(.clear)
+                .glassEffect(.regular.interactive(false), in: Rectangle())
+        } else {
+            Rectangle().fill(.ultraThinMaterial)
+        }
+#else
+        Rectangle().fill(.ultraThinMaterial)
+#endif
     }
 
     private func backForwardEdgeSwipeGesture(viewWidth: CGFloat) -> some Gesture {
