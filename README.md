@@ -47,11 +47,12 @@ Aero follows a modern, layered architecture to ensure scalability and performanc
 | Layer | Responsibility |
 | :--- | :--- |
 | **UI Shell** | SwiftUI views with native glassmorphic materials. |
-| **Service Layer** | Domain-specific services (`SearchService`, `NavigationService`, `PrivacyService`). |
-| **Coordinator Layer** | Thin coordinators (`DownloadCoordinator`, `ScrollCoordinator`, `ThemeExtractor`). |
-| **State Layer** | Centralized coordination using the Swift **@Observable** macro (`BrowserViewModel`). |
-| **Data & Storage** | Persistent JSON-based storage for History and Favorites with debounced I/O. |
-| **Advanced Features** | Custom services for PiP, Biometric Auth, UserScripts, and Offline Reading. |
+| **Service Layer** | Domain-specific services (`SearchService`, `NavigationService`, `PrivacyService`, `FindInPageService`). |
+| **Coordinator Layer** | Thin coordinators (`NavigationCoordinator`, `ScrollCoordinator`, `DownloadCoordinator`, `ThemeExtractor`). |
+| **State Layer** | Centralized, main-actor isolated coordination using the Swift **@Observable** macro (`BrowserViewModel`). |
+| **Data & Storage** | **SwiftData** backed persistent storage for History and Favorites with native `@Query` integration. |
+| **Performance** | **WebViewPool** for recycling and suspending WKWebViews to handle hundreds of tabs efficiently. |
+| **Advanced Features** | Custom services for PiP, Biometric Auth, UserScripts, DNS-over-HTTPS, and Offline Reading. |
 
 ### Technical Highlights
 - **Target**: iOS 17.0+
