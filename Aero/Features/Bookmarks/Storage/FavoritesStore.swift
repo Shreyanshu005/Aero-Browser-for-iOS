@@ -28,7 +28,7 @@ final class FavoritesStore {
     @MainActor
     init() {
         self.context = StorageProvider.shared.container.mainContext
-        
+
         let fetchDescriptor = FetchDescriptor<FavoriteItem>()
         if let count = try? context.fetchCount(fetchDescriptor), count == 0 {
             seedDefaults()

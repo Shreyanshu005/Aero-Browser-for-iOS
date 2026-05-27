@@ -4,9 +4,9 @@ import Foundation
 @MainActor
 final class StorageProvider {
     static let shared = StorageProvider()
-    
+
     let container: ModelContainer
-    
+
     private init() {
         do {
             let schema = Schema([HistoryItem.self, FavoriteItem.self])

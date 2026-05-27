@@ -6,14 +6,14 @@ final class WebViewPool {
 
     private let maxPoolSize = 3
     private var availableWebViews: [WKWebView] = []
-    
+
     private let configuration: WKWebViewConfiguration
 
     private init() {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = .all
-        
+
         self.configuration = config
     }
 
@@ -28,7 +28,7 @@ final class WebViewPool {
             webView.uiDelegate = nil
             return webView
         }
-        
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -42,7 +42,7 @@ final class WebViewPool {
         webView.scrollView.delegate = nil
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
-        
+
         if availableWebViews.count < maxPoolSize {
             availableWebViews.append(webView)
         }

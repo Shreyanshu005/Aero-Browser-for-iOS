@@ -16,7 +16,7 @@ struct PersistedTab: Codable, Identifiable {
 final class TabStatePersistence {
     private let fileURL: URL
     private var saveTask: Task<Void, Never>?
-    
+
     init() {
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             self.fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tab_state.json")
@@ -24,7 +24,7 @@ final class TabStatePersistence {
         }
         self.fileURL = docs.appendingPathComponent("tab_state.json")
     }
-    
+
     func saveTabs(_ tabs: [Tab], activeIndex: Int) {
         let persistedTabs = tabs.map { tab in
             PersistedTab(
@@ -34,11 +34,11 @@ final class TabStatePersistence {
                 lastAccessedAt: tab.lastAccessedAt
             )
         }
-        
+
         let state = PersistedState(tabs: persistedTabs, activeIndex: activeIndex)
         debouncedSave(state: state)
     }
-    
+
     func loadTabs() -> (tabs: [PersistedTab], activeIndex: Int)? {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
         do {
@@ -50,16 +50,16 @@ final class TabStatePersistence {
             return nil
         }
     }
-    
+
     private func debouncedSave(state: PersistedState) {
         saveTask?.cancel()
         saveTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 second debounce
+            try? await Task.sleep(nanoseconds: 2_000_000_000) 
             guard !Task.isCancelled else { return }
             await self?.performSave(state: state)
         }
     }
-    
+
     private func performSave(state: PersistedState) async {
         do {
             let data = try JSONEncoder().encode(state)

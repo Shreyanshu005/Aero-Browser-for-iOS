@@ -10,7 +10,7 @@ final class DownloadCoordinator: NSObject, WKDownloadDelegate {
         self.downloadManager = downloadManager
         super.init()
     }
-    
+
     @available(iOS 14.5, *)
     func attach(download: WKDownload, sourceURL: URL?) {
         download.delegate = self
@@ -43,7 +43,7 @@ final class DownloadCoordinator: NSObject, WKDownloadDelegate {
             .appendingPathComponent("Downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
         let destination = downloadsDir.appendingPathComponent(suggestedFilename)
-        
+
         try? FileManager.default.removeItem(at: destination)
         downloadDestinations[ObjectIdentifier(download)] = destination
         completionHandler(destination)

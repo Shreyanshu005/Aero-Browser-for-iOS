@@ -3,9 +3,6 @@ import Foundation
 import WebKit
 import os.log
 
-// MARK: - PictureInPictureError
-
-/// Errors that can occur during PiP operations.
 enum PictureInPictureError: LocalizedError {
     case noVideoFound
     case invalidVideoURL
@@ -29,48 +26,29 @@ enum PictureInPictureError: LocalizedError {
     }
 }
 
-// MARK: - VideoInfo
-
-/// Describes a video element found on a web page.
 struct VideoInfo: Sendable {
-    /// The source URL of the video (may be empty for blob URLs without fallback).
+
     let sourceURL: String
-    /// The current playback time in seconds.
+
     let currentTime: Double
-    /// Whether the video is currently paused.
+
     let isPaused: Bool
-    /// Whether the source is a blob URL.
+
     let isBlobURL: Bool
-    /// The video's duration in seconds.
+
     let duration: Double
 }
 
-// MARK: - PictureInPictureService
-
-/// Detects videos on web pages and provides Picture-in-Picture playback.
-///
-/// Uses JavaScript injection to find `<video>` elements and extract their
-/// source URLs. Supports direct HTTP(S) URLs; blob URLs are detected and
-/// the service attempts to resolve the underlying source.
 @Observable
 final class PictureInPictureService {
 
-    // MARK: - Public State
-
-    /// The currently active PiP player controller, if any.
     var activePlayerController: AVPlayerViewController?
 
-    /// Whether PiP is currently active.
     var isPiPActive: Bool = false
-
-    // MARK: - Private
 
     private var player: AVPlayer?
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.aero.browser", category: "PictureInPicture")
 
-    // MARK: - JavaScript Sources
-
-    /// JavaScript to detect all video elements on the page and return their metadata.
     private static let detectVideoJS = """
     (function() {
         var videos = document.querySelectorAll('video');
@@ -99,7 +77,6 @@ final class PictureInPictureService {
     })();
     """
 
-    /// JavaScript to extract the resolved source URL from the largest video element.
     private static let extractSourceJS = """
     (function() {
         var videos = Array.from(document.querySelectorAll('video'));
@@ -134,12 +111,6 @@ final class PictureInPictureService {
     })();
     """
 
-    // MARK: - Public Methods
-
-    /// Detects whether the current page contains any video elements.
-    ///
-    /// - Parameter webView: The web view to inspect.
-    /// - Returns: An array of `VideoInfo` structs for each detected video.
     func detectVideos(in webView: WKWebView) async throws -> [VideoInfo] {
         let result = try await webView.evaluateJavaScript(Self.detectVideoJS)
 
@@ -164,10 +135,6 @@ final class PictureInPictureService {
         }
     }
 
-    /// Extracts the best available video source URL from the page.
-    ///
-    /// - Parameter webView: The web view to inspect.
-    /// - Returns: The resolved video URL.
     func extractVideoSourceURL(from webView: WKWebView) async throws -> URL {
         let result = try await webView.evaluateJavaScript(Self.extractSourceJS)
 
@@ -187,10 +154,6 @@ final class PictureInPictureService {
         return url
     }
 
-    /// Starts Picture-in-Picture playback for the primary video on the page.
-    ///
-    /// - Parameter webView: The web view containing the video.
-    /// - Returns: The configured `AVPlayerViewController` for presentation.
     @MainActor
     func startPiP(from webView: WKWebView) async throws -> AVPlayerViewController {
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
@@ -228,7 +191,6 @@ final class PictureInPictureService {
         return controller
     }
 
-    /// Stops PiP playback and cleans up resources.
     @MainActor
     func stopPiP() {
         player?.pause()
@@ -238,8 +200,6 @@ final class PictureInPictureService {
         logger.info("PiP stopped")
     }
 }
-
-// MARK: - Decodable Response Types
 
 private struct DetectVideoResponse: Decodable {
     let found: Bool

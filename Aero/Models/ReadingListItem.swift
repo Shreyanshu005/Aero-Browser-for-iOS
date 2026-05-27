@@ -1,6 +1,5 @@
 import Foundation
 
-/// Represents a web page saved for offline reading.
 struct ReadingListItem: Identifiable, Codable, Hashable {
     let id: UUID
     let title: String

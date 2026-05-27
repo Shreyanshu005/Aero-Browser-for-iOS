@@ -10,12 +10,12 @@ enum TabDeduplicationService {
             return normalizeURL(tabURL) == normalizedTarget
         }
     }
-    
+
     static func normalizeURL(_ url: URL) -> URL {
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
-        
+
         components.fragment = nil
-        
+
         if let queryItems = components.queryItems {
             let trackingParams = [
                 "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
@@ -24,14 +24,14 @@ enum TabDeduplicationService {
             let filtered = queryItems.filter { !trackingParams.contains($0.name.lowercased()) }
             components.queryItems = filtered.isEmpty ? nil : filtered
         }
-        
+
         if components.path.hasSuffix("/") && components.path.count > 1 {
             components.path.removeLast()
         }
-        
+
         components.scheme = components.scheme?.lowercased()
         components.host = components.host?.lowercased()
-        
+
         return components.url ?? url
     }
 }

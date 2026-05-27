@@ -271,8 +271,6 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         decisionHandler(.allow)
     }
 
-    // MARK: - WKDownload bridge
-
     @available(iOS 14.5, *)
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
         downloadCoordinator.attach(download: download, sourceURL: navigationAction.request.url)

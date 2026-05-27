@@ -5,10 +5,10 @@ import WebKit
 struct PageMetrics: Equatable {
     let loadTime: TimeInterval
     let resourceCount: Int
-    let pageWeight: Int64 // bytes
+    let pageWeight: Int64 
     let domNodes: Int
     let jsHeapSize: Int64
-    
+
     static let empty = PageMetrics(loadTime: 0, resourceCount: 0, pageWeight: 0, domNodes: 0, jsHeapSize: 0)
 }
 
@@ -16,29 +16,29 @@ struct PageMetrics: Equatable {
 final class PagePerformanceProfiler {
     var isEnabled: Bool = false
     var latestMetrics: PageMetrics? = nil
-    
+
     func profile(webView: WKWebView) async {
         guard isEnabled else { return }
-        
+
         let js = """
         (function() {
             try {
                 const timing = performance.timing;
                 const loadTime = timing.loadEventEnd > 0 ? (timing.loadEventEnd - timing.navigationStart) / 1000 : 0;
-                
+
                 const resources = performance.getEntriesByType('resource');
                 const resourceCount = resources.length;
-                
+
                 let pageWeight = 0;
                 resources.forEach(r => {
                     pageWeight += (r.transferSize || r.decodedBodySize || 0);
                 });
-                
+
                 const domNodes = document.querySelectorAll('*').length;
-                
+
                 const memory = performance.memory;
                 const jsHeapSize = memory ? memory.usedJSHeapSize : 0;
-                
+
                 return {
                     loadTime: loadTime,
                     resourceCount: resourceCount,
@@ -51,7 +51,7 @@ final class PagePerformanceProfiler {
             }
         })();
         """
-        
+
         do {
             if let result = try await webView.evaluateJavaScript(js) as? [String: Any] {
                 let metrics = PageMetrics(

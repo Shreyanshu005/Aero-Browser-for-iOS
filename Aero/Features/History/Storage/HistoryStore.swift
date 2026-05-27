@@ -18,7 +18,7 @@ final class HistoryStore {
         let item = HistoryItem(url: url, title: title)
         context.insert(item)
         try? context.save()
-        
+
         let fetchDescriptor = FetchDescriptor<HistoryItem>()
         if let count = try? context.fetchCount(fetchDescriptor), count > 5000 {
             var oldestFetch = FetchDescriptor<HistoryItem>(sortBy: [SortDescriptor(\.visitDate, order: .forward)])

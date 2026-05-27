@@ -55,7 +55,7 @@ final class BrowserViewModel {
         get { sheetRouter.activeSheet == .trackerReceipt }
         set { if newValue { sheetRouter.present(.trackerReceipt) } else { sheetRouter.dismissSheet() } }
     }
-    
+
     var showReaderMode: Bool {
         get { sheetRouter.activeFullScreenCover == .readerMode }
         set { if newValue { sheetRouter.presentFullScreen(.readerMode) } else { sheetRouter.dismissFullScreenCover() } }

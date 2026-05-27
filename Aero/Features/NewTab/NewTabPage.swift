@@ -4,7 +4,7 @@ import SwiftData
 struct NewTabPage: View {
     @Bindable var viewModel: BrowserViewModel
     @State private var appeared = false
-    
+
     @Query(sort: \FavoriteItem.title) private var favorites: [FavoriteItem]
 
     var body: some View {

@@ -17,8 +17,6 @@ final class HistoryItem: Identifiable, Hashable {
     }
 }
 
-// MARK: - Formatting (separated from model to avoid per-access DateFormatter allocation)
-
 enum HistoryItemFormatter {
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -47,8 +45,6 @@ enum HistoryItemFormatter {
         timeFormatter.string(from: item.visitDate)
     }
 }
-
-// MARK: - Convenience accessors (delegates to formatter)
 
 extension HistoryItem {
     var dayKey: String {

@@ -1,7 +1,6 @@
 import Foundation
 import WebKit
 
-/// Represents a user-defined JavaScript snippet that can be injected into web pages.
 struct UserScriptItem: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
@@ -10,7 +9,6 @@ struct UserScriptItem: Identifiable, Codable, Hashable {
     var injectionTime: InjectionTime
     var isEnabled: Bool
 
-    /// Wrapper around WKUserScriptInjectionTime for Codable conformance.
     enum InjectionTime: String, Codable, Hashable {
         case atDocumentStart
         case atDocumentEnd

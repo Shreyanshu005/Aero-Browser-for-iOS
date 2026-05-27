@@ -12,9 +12,9 @@ enum URLSchemeAction {
 final class URLSchemeHandler {
     func handle(url: URL) -> URLSchemeAction? {
         guard url.scheme == "aero" else { return nil }
-        
+
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        
+
         switch url.host {
         case "open":
             if let queryItem = components.queryItems?.first(where: { $0.name == "url" }),
@@ -34,7 +34,7 @@ final class URLSchemeHandler {
         default:
             return nil
         }
-        
+
         return nil
     }
 }
