@@ -12,10 +12,19 @@ import Combine
 final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
+    private let externalURLPolicy: ExternalURLPolicy
+    private let externalURLOpener: ExternalURLOpening
     private var observations: [NSKeyValueObservation] = []
 
-    init(tab: Tab, onNavigationEvent: @escaping (NavigationEvent) -> Void) {
+    init(
+        tab: Tab,
+        externalURLPolicy: ExternalURLPolicy = ExternalURLPolicy(),
+        externalURLOpener: ExternalURLOpening = UIApplicationExternalURLOpener(),
+        onNavigationEvent: @escaping (NavigationEvent) -> Void
+    ) {
         self.tab = tab
+        self.externalURLPolicy = externalURLPolicy
+        self.externalURLOpener = externalURLOpener
         self.onNavigationEvent = onNavigationEvent
         super.init()
     }
@@ -137,7 +146,17 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
             return
         }
 
-        decisionHandler(.allow)
+        switch externalURLPolicy.decision(for: navigationAction.request.url) {
+        case .allowInWebView:
+            decisionHandler(.allow)
+        case .openExternally(let url):
+            if shouldOpenExternalURL(for: navigationAction) {
+                externalURLOpener.open(url)
+            }
+            decisionHandler(.cancel)
+        case .cancel:
+            decisionHandler(.cancel)
+        }
     }
 
     func webView(
@@ -176,8 +195,15 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         for navigationAction: WKNavigationAction,
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
-        if navigationAction.targetFrame == nil || !(navigationAction.targetFrame!.isMainFrame) {
-            webView.load(navigationAction.request)
+        if navigationAction.targetFrame?.isMainFrame != true {
+            switch externalURLPolicy.decision(for: navigationAction.request.url) {
+            case .allowInWebView:
+                webView.load(navigationAction.request)
+            case .openExternally(let url):
+                externalURLOpener.open(url)
+            case .cancel:
+                break
+            }
         }
         return nil
     }
@@ -202,5 +228,9 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
         let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition") ?? ""
         return disposition.localizedCaseInsensitiveContains("attachment")
+    }
+
+    private func shouldOpenExternalURL(for navigationAction: WKNavigationAction) -> Bool {
+        navigationAction.targetFrame?.isMainFrame != false
     }
 }

@@ -4,6 +4,41 @@ import Testing
 
 struct AeroTests {
 
+    @Test func externalURLPolicyAllowsWebViewSchemes() {
+        let policy = ExternalURLPolicy()
+
+        #expect(policy.decision(for: URL(string: "https://example.com")!) == .allowInWebView)
+        #expect(policy.decision(for: URL(string: "http://example.com")!) == .allowInWebView)
+        #expect(policy.decision(for: URL(string: "about:blank")!) == .allowInWebView)
+        #expect(policy.decision(for: URL(string: "aero://new-tab")!) == .allowInWebView)
+    }
+
+    @Test func externalURLPolicyRoutesExternalSchemesOutOfWebView() {
+        let policy = ExternalURLPolicy()
+        let mail = URL(string: "mailto:hello@example.com")!
+        let phone = URL(string: "tel:+15551234567")!
+        let message = URL(string: "sms:+15551234567")!
+        let appStore = URL(string: "itms-apps://itunes.apple.com/app/id123456789")!
+        let deepLink = URL(string: "sampleapp://open/item")!
+
+        #expect(policy.decision(for: mail) == .openExternally(mail))
+        #expect(policy.decision(for: phone) == .openExternally(phone))
+        #expect(policy.decision(for: message) == .openExternally(message))
+        #expect(policy.decision(for: appStore) == .openExternally(appStore))
+        #expect(policy.decision(for: deepLink) == .openExternally(deepLink))
+    }
+
+    @Test func externalURLPolicyCancelsUnsupportedSchemes() {
+        let policy = ExternalURLPolicy()
+
+        #expect(policy.decision(for: nil) == .cancel)
+        #expect(policy.decision(for: URL(string: "example.com")) == .cancel)
+        #expect(policy.decision(for: URL(string: "javascript:alert(1)")!) == .cancel)
+        #expect(policy.decision(for: URL(string: "data:text/html,Hello")!) == .cancel)
+        #expect(policy.decision(for: URL(string: "blob:https://example.com/id")!) == .cancel)
+        #expect(policy.decision(for: URL(fileURLWithPath: "/tmp/example")) == .cancel)
+    }
+
     @Test func chromeStaysExpandedAtTop() {
         var controller = BrowserChromeController()
 
