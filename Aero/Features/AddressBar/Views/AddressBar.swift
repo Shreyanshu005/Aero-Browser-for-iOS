@@ -27,6 +27,7 @@ struct AddressBar: View {
                     onSubmit: { viewModel.submitAddressBar() }
                 )
                 .frame(height: 22)
+                .padding(.vertical, 2)
             } else {
                 HStack(spacing: 6) {
                     if viewModel.activeTab?.isSecure == true {
@@ -47,6 +48,11 @@ struct AddressBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .background(Color.black, in: Capsule())
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8)
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             if !viewModel.isAddressBarFocused {
@@ -164,7 +170,7 @@ struct AddressBar: View {
     }
 
     private var displayTextColor: Color {
-        viewModel.activeTab?.url != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
+        viewModel.activeTab?.url != nil ? .white : Color.white.opacity(0.55)
     }
 
     private func shareCurrentPage() {

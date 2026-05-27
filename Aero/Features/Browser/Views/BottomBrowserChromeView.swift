@@ -6,36 +6,29 @@ struct BottomBrowserChromeView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if viewModel.chromeMode == .expanded {
-                expandedChrome
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            expandedChrome
+                .opacity(viewModel.chromeMode == .expanded ? 1 : 0)
+                .offset(y: viewModel.chromeMode == .expanded ? 0 : 90)
+                .allowsHitTesting(viewModel.chromeMode == .expanded)
 
-            if viewModel.chromeMode == .compact {
-                CompactAddressPillView(viewModel: viewModel)
-                    .frame(maxWidth: 260)
-                    .matchedGeometryEffect(id: "address", in: addressTransition)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            CompactAddressPillView(viewModel: viewModel)
+                .frame(maxWidth: 260)
+                .matchedGeometryEffect(id: "address", in: addressTransition)
+                .opacity(viewModel.chromeMode == .compact ? 1 : 0)
+                .offset(y: viewModel.chromeMode == .compact ? 0 : 24)
+                .allowsHitTesting(viewModel.chromeMode == .compact)
         }
         .animation(AeroAnimation.smooth, value: viewModel.chromeMode)
     }
 
     private var expandedChrome: some View {
-        VStack(spacing: AeroSpacing.sm) {
-            bottomBar
-                .transition(.chromeBlurReplace)
-        }
-        .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
-        .animation(AeroAnimation.smooth, value: viewModel.searchSuggestions.isEmpty)
+        bottomBar
+            .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
+            .animation(AeroAnimation.smooth, value: viewModel.searchSuggestions.isEmpty)
     }
 
     private var bottomBar: some View {
         VStack(spacing: AeroSpacing.sm) {
-            if let tab = viewModel.activeTab {
-                ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
-            }
-
             HStack(spacing: AeroSpacing.sm) {
                 AddressBar(viewModel: viewModel)
                     .matchedGeometryEffect(id: "address", in: addressTransition)
@@ -62,7 +55,7 @@ struct BottomBrowserChromeView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, AeroSpacing.md)
-        .padding(.top, AeroSpacing.sm)
+        .padding(.top, AeroSpacing.lg)
         .padding(.bottom, AeroSpacing.xl)
         .background {
             if viewModel.isAddressBarFocused {
@@ -72,8 +65,12 @@ struct BottomBrowserChromeView: View {
             }
         }
         .overlay(alignment: .top) {
-            Divider()
-                .opacity(0.35)
+            if let tab = viewModel.activeTab {
+                ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
+                    .padding(.horizontal, -AeroSpacing.md)
+                    .offset(y: -2)
+                    .transition(.chromeBlurReplace)
+            }
         }
         .gesture(openTabsDragGesture)
     }

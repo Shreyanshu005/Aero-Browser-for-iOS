@@ -21,6 +21,7 @@ final class BrowserViewModel {
     var searchEngine: SearchEngine = .google
     var contentBlockerEnabled: Bool = true
     var chromeController = BrowserChromeController()
+    private var contentBlockerApplied: Bool = false
 
 
     var showMenu: Bool = false
@@ -52,6 +53,26 @@ final class BrowserViewModel {
 
         Task {
             await contentBlocker.compileRules()
+            await MainActor.run {
+                self.refreshContentBlocking()
+            }
+        }
+    }
+
+    func refreshContentBlocking() {
+        guard let webView = activeTab?.webView else { return }
+        if contentBlockerEnabled {
+            if !contentBlockerApplied {
+                contentBlocker.apply(to: webView.configuration)
+                contentBlockerApplied = true
+                webView.reload()
+            }
+        } else {
+            if contentBlockerApplied {
+                contentBlocker.remove(from: webView.configuration)
+                contentBlockerApplied = false
+                webView.reload()
+            }
         }
     }
 
@@ -116,7 +137,19 @@ final class BrowserViewModel {
 
 
     func goBack() {
-        activeTab?.webView?.goBack()
+        if activeTab?.webView?.canGoBack == true {
+            activeTab?.webView?.goBack()
+            return
+        }
+
+        // No more web history: go back to home/new tab.
+        if activeTab?.url != nil {
+            activeTab?.url = nil
+            activeTab?.title = ""
+            addressBarText = ""
+            isAddressBarFocused = false
+            chromeController.expand()
+        }
     }
 
     func goForward() {

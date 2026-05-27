@@ -29,14 +29,7 @@ struct TabGridView: View {
 
             deck
                 .opacity(appeared ? 1 : 0)
-                .padding(.top, 72)
-                .padding(.bottom, 96)
-
-            topControls
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : -10)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 14)
+                .padding(.vertical, 32)
 
             bottomControls
                 .opacity(appeared ? 1 : 0)
@@ -52,8 +45,10 @@ struct TabGridView: View {
 
     private var deck: some View {
         GeometryReader { geo in
-            let cardW = geo.size.width * 0.78
-            let cardH = geo.size.height * 0.98
+            let cardW = geo.size.width * 0.75
+            let headerH: CGFloat = 36
+            let totalH = geo.size.height * 0.96
+            let cardH = max(240, totalH - headerH - 10)
             let maxOff = max(0, CGFloat(tabs.count - 1) * cardStep)
             let fraction = (offset / cardStep) - floor(offset / cardStep)
 
@@ -92,9 +87,14 @@ struct TabGridView: View {
                     }()
 
                     return AnyView(
-                        TabCardView(tab: tab, isActive: isFront)
-                            .frame(width: cardW, height: cardH)
-                            .scaleEffect(scale, anchor: .top)
+                        VStack(spacing: 6) {
+                            TabCardHeaderView(tab: tab, isFront: isFront)
+                                .frame(width: cardW, height: headerH, alignment: .leading)
+
+                            TabCardView(tab: tab, isActive: isFront)
+                                .frame(width: cardW, height: cardH)
+                        }
+                            .scaleEffect(x: 1.0, y: scale, anchor: .top)
                             .offset(x: xOffset, y: yOffset)
                             .opacity(opacity)
                             .zIndex(Double(tabs.count - index))
@@ -118,6 +118,7 @@ struct TabGridView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.bottom, bottomControlsClearance)
             .contentShape(Rectangle())
             .simultaneousGesture(horizontalPagingGesture(maxOff: maxOff))
             .onAppear {
@@ -129,6 +130,50 @@ struct TabGridView: View {
                 }
                 dragStart = offset
             }
+        }
+    }
+
+    private var bottomControlsClearance: CGFloat { 108 }
+
+    private struct TabCardHeaderView: View {
+        let tab: Tab
+        let isFront: Bool
+
+        var body: some View {
+            HStack(spacing: 10) {
+                if let favicon = tab.favicon {
+                    Image(uiImage: favicon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 18, height: 18)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                } else {
+                    Image(systemName: "globe")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(width: 18, height: 18)
+                }
+
+                if isFront {
+                    Text(domainText)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .lineLimit(1)
+                        .transition(.opacity)
+                } else {
+                    Spacer(minLength: 0)
+                        .transition(.opacity)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .animation(.easeInOut(duration: 0.18), value: isFront)
+        }
+
+        private var domainText: String {
+            tab.url?.displayHost ?? tab.url?.host ?? "New Tab"
         }
     }
 
@@ -171,28 +216,6 @@ struct TabGridView: View {
                     .background(.ultraThinMaterial, in: Capsule())
                     .environment(\.colorScheme, .dark)
             }
-        }
-        .padding(.horizontal, 28)
-    }
-
-    private var topControls: some View {
-        HStack {
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.closeAllTabs()
-            } label: {
-                Text("Clear All")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .environment(\.colorScheme, .dark)
-            }
-            .disabled(viewModel.tabManager.tabs.count <= 1)
-            .opacity(viewModel.tabManager.tabs.count <= 1 ? 0.4 : 1.0)
-
-            Spacer()
         }
         .padding(.horizontal, 28)
     }
