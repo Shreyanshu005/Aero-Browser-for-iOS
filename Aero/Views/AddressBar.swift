@@ -42,7 +42,7 @@ struct AddressBar: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
-            } else if viewModel.activeTab?.url != nil {
+            } else if viewModel.activeTab?.displayURL != nil {
                 Button { viewModel.reload() } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 13, weight: .medium))
@@ -72,24 +72,26 @@ struct AddressBar: View {
     }
 
     private var displayText: String {
-        if let url = viewModel.activeTab?.url {
+        if let url = viewModel.activeTab?.displayURL {
             return url.displayHost ?? url.absoluteString
         }
         return "Search or enter URL"
     }
 
     private var displayTextColor: Color {
-        viewModel.activeTab?.url != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
+        viewModel.activeTab?.displayURL != nil ? Color(UIColor.label) : Color(UIColor.placeholderText)
     }
 
     private var iconName: String {
         if viewModel.isAddressBarFocused { return "magnifyingglass" }
+        if viewModel.activeTab?.navigationError != nil { return "exclamationmark.triangle.fill" }
         if viewModel.activeTab?.isSecure == true { return "lock.fill" }
-        if viewModel.activeTab?.url != nil { return "globe" }
+        if viewModel.activeTab?.displayURL != nil { return "globe" }
         return "magnifyingglass"
     }
 
     private var iconColor: Color {
+        if viewModel.activeTab?.navigationError != nil { return AeroColor.warning }
         if viewModel.activeTab?.isSecure == true { return .green }
         return Color(UIColor.secondaryLabel)
     }

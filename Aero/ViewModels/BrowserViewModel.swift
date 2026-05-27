@@ -85,11 +85,19 @@ final class BrowserViewModel {
 
     func handleNavigationEvent(_ event: NavigationEvent) {
         switch event {
+        case .didStartLoading:
+            activeTab?.navigationError = nil
         case .didFinishLoading:
+            activeTab?.navigationError = nil
             if let tab = activeTab, let url = tab.url, !url.isInternalPage {
                 historyStore.addVisit(url: url, title: tab.title)
             }
             tabManager.saveSession()
+        case .didFailLoading(let error):
+            let browserError = BrowserError(error: error, url: activeTab?.displayURL)
+            guard browserError.shouldDisplay else { return }
+            activeTab?.navigationError = browserError
+            chromeController.expand()
         case .didUpdateTitle(_), .didUpdateURL(_):
             tabManager.saveSession()
         case .didRequestDownload(let pendingDownload):
@@ -120,7 +128,27 @@ final class BrowserViewModel {
     }
 
     func reload() {
+        if activeTab?.navigationError != nil {
+            retryFailedNavigation()
+            return
+        }
+
+        activeTab?.navigationError = nil
         activeTab?.webView?.reload()
+    }
+
+    func retryFailedNavigation() {
+        guard let tab = activeTab else { return }
+
+        let url = tab.navigationError?.url ?? tab.displayURL
+        tab.navigationError = nil
+        chromeController.expand()
+
+        if let url {
+            tabManager.loadInActiveTab(url: url)
+        } else {
+            tab.webView?.reload()
+        }
     }
 
     func stopLoading() {

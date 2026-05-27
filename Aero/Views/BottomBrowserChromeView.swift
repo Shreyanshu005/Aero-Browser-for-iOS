@@ -123,19 +123,21 @@ private struct CompactAddressPill: View {
     }
 
     private var displayText: String {
-        if let url = viewModel.activeTab?.url {
+        if let url = viewModel.activeTab?.displayURL {
             return url.displayHost ?? viewModel.activeTab?.displayTitle ?? url.absoluteString
         }
         return "Search or enter URL"
     }
 
     private var iconName: String {
+        if viewModel.activeTab?.navigationError != nil { return "exclamationmark.triangle.fill" }
         if viewModel.activeTab?.isSecure == true { return "lock.fill" }
-        if viewModel.activeTab?.url != nil { return "globe" }
+        if viewModel.activeTab?.displayURL != nil { return "globe" }
         return "magnifyingglass"
     }
 
     private var iconColor: Color {
+        if viewModel.activeTab?.navigationError != nil { return AeroColor.warning }
         if viewModel.activeTab?.isSecure == true { return AeroColor.secure }
         return Color(UIColor.secondaryLabel)
     }

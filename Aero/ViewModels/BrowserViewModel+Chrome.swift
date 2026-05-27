@@ -2,11 +2,11 @@ import Foundation
 
 extension BrowserViewModel {
     func shareURL() -> URL? {
-        activeTab?.url
+        activeTab?.displayURL
     }
 
     func syncAddressBarWithActiveTab() {
-        if let url = activeTab?.url {
+        if let url = activeTab?.displayURL {
             addressBarText = url.absoluteString
         } else {
             addressBarText = ""

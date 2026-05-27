@@ -20,7 +20,7 @@ struct ToolbarView: View {
                 viewModel.goForward()
             }
 
-            toolbarButton("square.and.arrow.up", enabled: viewModel.activeTab?.url != nil) {
+            toolbarButton("square.and.arrow.up", enabled: viewModel.activeTab?.displayURL != nil) {
                 shareCurrentPage()
             }
 
