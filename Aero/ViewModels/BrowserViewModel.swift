@@ -43,6 +43,7 @@ final class BrowserViewModel {
         didSet {
             guard contentBlockerEnabled != oldValue else { return }
             saveSettings()
+            refreshSiteStatuses()
             recreateWebViewsForContentBlockerConfigurationChange()
         }
     }
@@ -86,6 +87,7 @@ final class BrowserViewModel {
         self.downloadManager = downloadManager
         self.contentBlocker = contentBlocker
 
+        refreshSiteStatuses()
 
         if compileContentBlocker {
             compileContentBlockerRules()
@@ -289,5 +291,11 @@ final class BrowserViewModel {
 
         pendingJavaScriptDialog = queuedJavaScriptDialogs.removeFirst()
         chromeController.expand()
+    }
+
+    private func refreshSiteStatuses() {
+        for tab in tabManager.tabs {
+            tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
+        }
     }
 }

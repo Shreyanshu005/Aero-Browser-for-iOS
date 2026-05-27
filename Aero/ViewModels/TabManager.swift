@@ -198,7 +198,7 @@ final class TabManager {
         }
 
         tab.navigationError = nil
-        tab.url = url
+        tab.updatePageStatus(url: url, isSecure: url.isSecure)
         tab.webView?.load(URLRequest(url: url))
         saveSessionIfRestorable(tab)
     }

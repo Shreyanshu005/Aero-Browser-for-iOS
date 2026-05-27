@@ -65,7 +65,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
             webView.observe(\.url, options: .new) { [weak self] wv, _ in
                 DispatchQueue.main.async {
                     guard let self else { return }
-                    self.tab.url = wv.url
+                    self.tab.updatePageStatus(url: wv.url, isSecure: wv.url?.isSecure ?? false)
                     if let certificateSummary = self.latestServerCertificateSummary,
                        certificateSummary.matches(host: wv.url?.host) {
                         self.tab.updateServerCertificateSummary(certificateSummary)
@@ -228,6 +228,7 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if navigationAction.targetFrame?.isMainFrame != true {
+            tab.recordPopupAttempt()
             switch externalURLPolicy.decision(for: navigationAction.request.url) {
             case .allowInWebView:
                 webView.load(navigationAction.request)
@@ -295,6 +296,17 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         )
     }
 
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        tab.recordMediaCaptureRequest(type.siteMediaCaptureType)
+        decisionHandler(.prompt)
+    }
+
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let metrics = WebScrollMetrics(
             offsetY: max(0, scrollView.contentOffset.y + scrollView.adjustedContentInset.top),
@@ -353,5 +365,20 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     private func normalizedSecurityHost(_ host: String?) -> String? {
         guard let host, !host.isEmpty else { return nil }
         return host.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+    }
+}
+
+private extension WKMediaCaptureType {
+    var siteMediaCaptureType: SiteMediaCaptureType {
+        switch self {
+        case .camera:
+            return .camera
+        case .microphone:
+            return .microphone
+        case .cameraAndMicrophone:
+            return .cameraAndMicrophone
+        @unknown default:
+            return .cameraAndMicrophone
+        }
     }
 }

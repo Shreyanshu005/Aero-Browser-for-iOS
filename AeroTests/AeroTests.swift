@@ -109,6 +109,66 @@ struct AeroTests {
         #expect(result == "Default")
     }
 
+    @Test func siteStatusBuildsDefaultPermissionsForURL() {
+        let status = SiteStatus(
+            url: URL(string: "https://www.example.com/path")!,
+            isSecureConnection: true,
+            contentBlockerEnabled: true
+        )
+
+        #expect(status.host == "example.com")
+        #expect(status.displayHost == "example.com")
+        #expect(status.isSecureConnection)
+        #expect(status.contentBlocker == .enabled)
+        #expect(status.permission(for: .camera)?.disposition == .ask)
+        #expect(status.permission(for: .microphone)?.disposition == .ask)
+        #expect(status.permission(for: .location)?.disposition == .unsupported)
+        #expect(status.permission(for: .popups)?.disposition == .default)
+    }
+
+    @Test func siteStatusRecordsObservedMediaAndPopupRequests() {
+        var status = SiteStatus(url: URL(string: "https://example.com")!, isSecureConnection: true)
+
+        status.recordMediaCaptureRequest(.cameraAndMicrophone)
+        status.recordPopupAttempt()
+
+        #expect(status.permission(for: .camera)?.wasObservedThisSession == true)
+        #expect(status.permission(for: .microphone)?.wasObservedThisSession == true)
+        #expect(status.permission(for: .popups)?.wasObservedThisSession == true)
+        #expect(status.permission(for: .camera)?.disposition == .ask)
+        #expect(status.permission(for: .popups)?.disposition == .default)
+    }
+
+    @Test func siteStatusResetsObservedPermissionsWhenHostChanges() {
+        var status = SiteStatus(url: URL(string: "https://example.com")!, isSecureConnection: true)
+        status.recordMediaCaptureRequest(.camera)
+        status.recordPopupAttempt()
+
+        status.updatePage(url: URL(string: "https://swift.org/documentation")!, isSecureConnection: true)
+
+        #expect(status.host == "swift.org")
+        #expect(status.permission(for: .camera)?.wasObservedThisSession == false)
+        #expect(status.permission(for: .popups)?.wasObservedThisSession == false)
+    }
+
+    @Test func siteStatusPreservesObservedPermissionsOnSameHost() {
+        var status = SiteStatus(url: URL(string: "https://example.com/start")!, isSecureConnection: true)
+        status.recordMediaCaptureRequest(.microphone)
+
+        status.updatePage(url: URL(string: "https://example.com/next")!, isSecureConnection: true)
+
+        #expect(status.host == "example.com")
+        #expect(status.permission(for: .microphone)?.wasObservedThisSession == true)
+    }
+
+    @Test func siteStatusUpdatesContentBlockerState() {
+        var status = SiteStatus(url: URL(string: "https://example.com")!, isSecureConnection: true)
+
+        status.updateContentBlocker(isEnabled: false)
+
+        #expect(status.contentBlocker == .disabled)
+    }
+
     @Test func chromeStaysExpandedAtTop() {
         var controller = BrowserChromeController()
 

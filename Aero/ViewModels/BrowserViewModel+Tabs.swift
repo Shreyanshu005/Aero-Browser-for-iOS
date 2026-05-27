@@ -33,7 +33,8 @@ extension BrowserViewModel {
     }
 
     func newTab() {
-        tabManager.newTab()
+        let tab = tabManager.newTab()
+        tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
         chromeController.expand()
         hideTabGrid()
         addressBarText = ""
@@ -41,7 +42,8 @@ extension BrowserViewModel {
     }
 
     func newPrivateTab() {
-        tabManager.newPrivateTab()
+        let tab = tabManager.newPrivateTab()
+        tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
         chromeController.expand()
         hideTabGrid()
         addressBarText = ""
@@ -58,7 +60,8 @@ extension BrowserViewModel {
         guard tabManager.canReopenLastClosedTab else { return }
 
         withAnimation(AeroAnimation.snappy) {
-            _ = tabManager.reopenLastClosedTab()
+            let tab = tabManager.reopenLastClosedTab()
+            tab?.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
             isShowingTabGrid = false
         }
         isAddressBarFocused = false
