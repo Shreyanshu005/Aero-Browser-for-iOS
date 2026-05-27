@@ -45,18 +45,28 @@ final class BrowserViewModel {
 
 
     var activeTab: Tab? { tabManager.activeTab }
+    var activeBrowsingMode: BrowsingMode { tabManager.activeBrowsingMode }
     var chromeMode: BottomChromeMode { chromeController.mode }
 
-    init() {
-        self.tabManager = TabManager()
-        self.historyStore = HistoryStore()
-        self.favoritesStore = FavoritesStore()
-        self.downloadManager = DownloadManager()
-        self.contentBlocker = ContentBlocker()
+    init(
+        tabManager: TabManager = TabManager(),
+        historyStore: HistoryStore = HistoryStore(),
+        favoritesStore: FavoritesStore = FavoritesStore(),
+        downloadManager: DownloadManager = DownloadManager(),
+        contentBlocker: ContentBlocker = ContentBlocker(),
+        compileContentBlocker: Bool = true
+    ) {
+        self.tabManager = tabManager
+        self.historyStore = historyStore
+        self.favoritesStore = favoritesStore
+        self.downloadManager = downloadManager
+        self.contentBlocker = contentBlocker
 
 
-        Task {
-            await contentBlocker.compileRules()
+        if compileContentBlocker {
+            Task {
+                await contentBlocker.compileRules()
+            }
         }
     }
 
@@ -86,12 +96,12 @@ final class BrowserViewModel {
     func handleNavigationEvent(_ event: NavigationEvent) {
         switch event {
         case .didFinishLoading:
-            if let tab = activeTab, let url = tab.url, !url.isInternalPage {
+            if let tab = activeTab, !tab.isPrivate, let url = tab.url, !url.isInternalPage {
                 historyStore.addVisit(url: url, title: tab.title)
             }
-            tabManager.saveSession()
+            saveSessionForActiveStandardTab()
         case .didUpdateTitle(_), .didUpdateURL(_):
-            tabManager.saveSession()
+            saveSessionForActiveStandardTab()
         case .didRequestDownload(let pendingDownload):
             requestDownload(pendingDownload)
         case .didScroll(let metrics):
@@ -107,6 +117,11 @@ final class BrowserViewModel {
         default:
             break
         }
+    }
+
+    private func saveSessionForActiveStandardTab() {
+        guard activeTab?.browsingMode.isSessionRestorable == true else { return }
+        tabManager.saveSession()
     }
 
 

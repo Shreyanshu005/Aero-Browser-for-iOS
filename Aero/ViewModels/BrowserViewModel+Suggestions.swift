@@ -9,9 +9,9 @@ extension BrowserViewModel {
 
         suggestions = suggestionProvider.suggestions(
             for: query,
-            tabs: tabManager.tabs,
+            tabs: tabManager.tabs(in: activeBrowsingMode),
             favorites: favoritesStore.favorites,
-            history: historyStore.items,
+            history: activeTab?.isPrivate == true ? [] : historyStore.items,
             activeTabID: activeTab?.id
         )
     }

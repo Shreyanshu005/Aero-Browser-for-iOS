@@ -29,9 +29,13 @@ final class FavoritesStore {
     private(set) var favorites: [FavoriteItem] = []
     private let fileURL: URL
 
-    init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        self.fileURL = docs.appendingPathComponent("aero_favorites.json")
+    init(fileURL: URL? = nil) {
+        if let fileURL {
+            self.fileURL = fileURL
+        } else {
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            self.fileURL = docs.appendingPathComponent("aero_favorites.json")
+        }
         loadFromDisk()
 
         if favorites.isEmpty {

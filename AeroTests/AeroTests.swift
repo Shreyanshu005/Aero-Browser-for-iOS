@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WebKit
 @testable import Aero
 
 struct AeroTests {
@@ -316,6 +317,94 @@ struct AeroTests {
         #expect(store.savedSessions.last?.activeTabIndex == 0)
     }
 
+    @Test func tabManagerCreatesPrivateTabsWithoutSavingThemToSession() {
+        let store = SpySessionStore(loadResult: nil)
+        let manager = TabManager(sessionStore: store)
+        let initialSaveCount = store.savedSessions.count
+        let privateURL = URL(string: "https://private.example")!
+
+        let privateTab = manager.newPrivateTab(url: privateURL)
+
+        #expect(privateTab.isPrivate)
+        #expect(manager.activeBrowsingMode == .privateBrowsing)
+        #expect(manager.tabs(in: .privateBrowsing).map(\.url) == [privateURL])
+        #expect(store.savedSessions.count == initialSaveCount)
+
+        manager.saveSession()
+
+        #expect(store.savedSessions.last?.tabs.count == 1)
+        #expect(store.savedSessions.last?.tabs.contains { $0.url == privateURL } == false)
+    }
+
+    @Test func tabManagerSwitchesBetweenSeparatedBrowsingModes() {
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+        let standardTab = manager.activeTab!
+        let privateTab = manager.newPrivateTab()
+
+        #expect(manager.activeTab?.id == privateTab.id)
+        #expect(manager.tabCount == 1)
+
+        manager.switchBrowsingMode(.standard)
+
+        #expect(manager.activeTab?.id == standardTab.id)
+        #expect(manager.tabCount == 1)
+        #expect(manager.tabs(in: .standard).map(\.id) == [standardTab.id])
+        #expect(manager.tabs(in: .privateBrowsing).map(\.id) == [privateTab.id])
+    }
+
+    @MainActor
+    @Test func privateTabsUseNonPersistentWebsiteDataStore() {
+        let privateWebView = Tab(browsingMode: .privateBrowsing).createWebView()
+        let standardWebView = Tab().createWebView()
+
+        #expect(privateWebView.configuration.websiteDataStore.isPersistent == false)
+        #expect(standardWebView.configuration.websiteDataStore.isPersistent)
+    }
+
+    @Test func privateNavigationDoesNotWriteHistoryOrSession() {
+        let sessionStore = SpySessionStore(loadResult: nil)
+        let manager = TabManager(sessionStore: sessionStore)
+        let initialSaveCount = sessionStore.savedSessions.count
+        let privateURL = URL(string: "https://private.example/page")!
+        let privateTab = manager.newPrivateTab(url: privateURL)
+        privateTab.title = "Private Page"
+
+        let historyURL = temporaryFileURL(prefix: "aero_private_history", fileExtension: "json")
+        let favoritesURL = temporaryFileURL(prefix: "aero_private_favorites", fileExtension: "json")
+        let downloadsURL = temporaryFileURL(prefix: "aero_private_downloads", fileExtension: "json")
+        let downloadsDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("aero_private_downloads_\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: historyURL)
+            try? FileManager.default.removeItem(at: favoritesURL)
+            try? FileManager.default.removeItem(at: downloadsURL)
+            try? FileManager.default.removeItem(at: downloadsDirectoryURL)
+        }
+
+        let viewModel = BrowserViewModel(
+            tabManager: manager,
+            historyStore: HistoryStore(fileURL: historyURL),
+            favoritesStore: FavoritesStore(fileURL: favoritesURL),
+            downloadManager: DownloadManager(
+                store: DownloadStore(fileURL: downloadsURL),
+                downloadsDirectoryURL: downloadsDirectoryURL
+            ),
+            compileContentBlocker: false
+        )
+
+        viewModel.handleNavigationEvent(.didFinishLoading)
+        viewModel.handleNavigationEvent(.didUpdateTitle("Private Page"))
+        viewModel.handleNavigationEvent(.didUpdateURL(privateURL))
+
+        #expect(viewModel.historyStore.items.isEmpty)
+        #expect(sessionStore.savedSessions.count == initialSaveCount)
+    }
+
+}
+
+private func temporaryFileURL(prefix: String, fileExtension pathExtension: String) -> URL {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("\(prefix)_\(UUID().uuidString).\(pathExtension)")
 }
 
 private final class SpySessionStore: SessionStoring {

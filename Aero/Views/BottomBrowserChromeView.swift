@@ -130,6 +130,7 @@ private struct CompactAddressPill: View {
     }
 
     private var iconName: String {
+        if viewModel.activeTab?.isPrivate == true { return "eye.slash" }
         if viewModel.activeTab?.isSecure == true { return "lock.fill" }
         if viewModel.activeTab?.url != nil { return "globe" }
         return "magnifyingglass"
