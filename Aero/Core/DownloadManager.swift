@@ -1,28 +1,26 @@
-
-
-
-
-
-
-
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.aero.browser", category: "DownloadManager")
 
 @Observable
 final class DownloadManager: NSObject {
     var downloads: [DownloadItem] = []
     private var activeTasks: [URLSessionDownloadTask: UUID] = [:]
+    private var reverseTaskMap: [UUID: URLSessionDownloadTask] = [:]
     private var activeWebKitDownloads: [UUID: URL] = [:]
 
     var activeToast: DownloadToast? = nil
 
     @ObservationIgnored
-    private var session: URLSession!
-
-    override init() {
-        super.init()
+    private lazy var session: URLSession = {
         let config = URLSessionConfiguration.default
-        session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
+        return URLSession(configuration: config, delegate: self, delegateQueue: .main)
+    }()
+
+    deinit {
+        session.invalidateAndCancel()
     }
 
     func startDownload(url: URL, suggestedFilename: String? = nil) {
@@ -35,6 +33,7 @@ final class DownloadManager: NSObject {
 
         let task = session.downloadTask(with: url)
         activeTasks[task] = item.id
+        reverseTaskMap[item.id] = task
         task.resume()
     }
 
@@ -81,9 +80,11 @@ final class DownloadManager: NSObject {
     }
 
     func cancelDownload(id: UUID) {
-        if let entry = activeTasks.first(where: { $0.value == id }) {
-            entry.key.cancel()
-            activeTasks.removeValue(forKey: entry.key)
+        // Use reverse map for O(1) lookup instead of O(n) scan
+        if let task = reverseTaskMap[id] {
+            task.cancel()
+            activeTasks.removeValue(forKey: task)
+            reverseTaskMap.removeValue(forKey: id)
         }
         if let index = downloads.firstIndex(where: { $0.id == id }) {
             downloads[index].state = .cancelled
@@ -98,18 +99,14 @@ final class DownloadManager: NSObject {
         downloads.removeAll { $0.state == .completed || $0.state == .failed || $0.state == .cancelled }
     }
 
-    private func documentsDirectory() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Downloads", isDirectory: true)
+    func documentsDirectory() -> URL {
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            logger.error("Documents directory unavailable, falling back to tmp")
+            return URL(fileURLWithPath: NSTemporaryDirectory())
+        }
+        return docs.appendingPathComponent("Downloads", isDirectory: true)
     }
 }
-
-struct DownloadToast: Identifiable, Equatable {
-    let id = UUID()
-    let filename: String
-}
-
-
 
 extension DownloadManager: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
@@ -117,16 +114,36 @@ extension DownloadManager: URLSessionDownloadDelegate {
         guard let index = downloads.firstIndex(where: { $0.id == id }) else { return }
 
         let downloadsDir = documentsDirectory()
-        try? FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
+
+        do {
+            try FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
+        } catch {
+            logger.error("Failed to create downloads directory: \(error.localizedDescription)")
+            downloads[index].state = .failed
+            downloads[index].errorMessage = "Could not create downloads folder"
+            return
+        }
 
         let destination = downloadsDir.appendingPathComponent(downloads[index].filename)
-        try? FileManager.default.removeItem(at: destination)
-        try? FileManager.default.moveItem(at: location, to: destination)
+
+        do {
+            // Remove existing file if present
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.moveItem(at: location, to: destination)
+        } catch {
+            logger.error("Failed to move downloaded file: \(error.localizedDescription)")
+            downloads[index].state = .failed
+            downloads[index].errorMessage = "Failed to save file: \(error.localizedDescription)"
+            return
+        }
 
         downloads[index].localURL = destination
         downloads[index].state = .completed
         downloads[index].progress = 1.0
         activeTasks.removeValue(forKey: downloadTask)
+        reverseTaskMap.removeValue(forKey: id)
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
@@ -154,45 +171,6 @@ extension DownloadManager: URLSessionDownloadDelegate {
             }
         }
         activeTasks.removeValue(forKey: downloadTask)
+        reverseTaskMap.removeValue(forKey: id)
     }
-}
-
-
-
-@Observable
-final class DownloadItem: Identifiable {
-    let id: UUID
-    let url: URL
-    var filename: String
-    var state: DownloadState = .pending
-    var progress: Double = 0.0
-    var bytesDownloaded: Int64 = 0
-    var totalBytes: Int64 = 0
-    var localURL: URL?
-    var errorMessage: String?
-    let startedAt: Date
-
-    init(url: URL, filename: String) {
-        self.id = UUID()
-        self.url = url
-        self.filename = filename
-        self.startedAt = Date()
-    }
-
-    var formattedProgress: String {
-        let downloaded = ByteCountFormatter.string(fromByteCount: bytesDownloaded, countStyle: .file)
-        if totalBytes > 0 {
-            let total = ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
-            return "\(downloaded) / \(total)"
-        }
-        return downloaded
-    }
-}
-
-enum DownloadState: Equatable {
-    case pending
-    case downloading
-    case completed
-    case failed
-    case cancelled
 }

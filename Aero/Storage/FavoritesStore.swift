@@ -1,12 +1,8 @@
-
-
-
-
-
-
-
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.aero.browser", category: "FavoritesStore")
 
 struct FavoriteItem: Identifiable, Codable, Hashable {
     let id: UUID
@@ -28,9 +24,14 @@ struct FavoriteItem: Identifiable, Codable, Hashable {
 final class FavoritesStore {
     private(set) var favorites: [FavoriteItem] = []
     private let fileURL: URL
+    private var saveTask: Task<Void, Never>?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            logger.error("Failed to locate documents directory")
+            self.fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("aero_favorites.json")
+            return
+        }
         self.fileURL = docs.appendingPathComponent("aero_favorites.json")
         loadFromDisk()
 
@@ -39,20 +40,18 @@ final class FavoritesStore {
         }
     }
 
-
-
     func add(title: String, url: URL) {
         let item = FavoriteItem(title: title, url: url)
         favorites.append(item)
-        saveToDisk()
+        debouncedSave()
     }
 
     func remove(id: UUID) {
         favorites.removeAll { $0.id == id }
-        saveToDisk()
+        debouncedSave()
     }
 
-
+    // MARK: - Private
 
     private func seedDefaults() {
         let defaults: [(String, String)] = [
@@ -69,17 +68,29 @@ final class FavoritesStore {
                 favorites.append(FavoriteItem(title: title, url: url))
             }
         }
-        saveToDisk()
+        debouncedSave()
     }
 
+    /// Debounced save: coalesces rapid mutations into a single disk write.
+    private func debouncedSave() {
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second debounce
+            guard !Task.isCancelled else { return }
+            await self?.performSave()
+        }
+    }
 
-
-    private func saveToDisk() {
-        do {
-            let data = try JSONEncoder().encode(favorites)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            print("[Aero] Failed to save favorites: \(error)")
+    @MainActor
+    private func performSave() {
+        let favoritesCopy = favorites
+        Task.detached(priority: .utility) {
+            do {
+                let data = try JSONEncoder().encode(favoritesCopy)
+                try data.write(to: self.fileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save favorites: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -89,7 +100,7 @@ final class FavoritesStore {
             let data = try Data(contentsOf: fileURL)
             favorites = try JSONDecoder().decode([FavoriteItem].self, from: data)
         } catch {
-            print("[Aero] Failed to load favorites: \(error)")
+            logger.error("Failed to load favorites: \(error.localizedDescription)")
         }
     }
 }
