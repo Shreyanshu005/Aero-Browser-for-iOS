@@ -25,237 +25,406 @@ struct TrackerReceiptView: View {
                 AeroColor.backgroundPrimary.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: AeroSpacing.xl) {
-                        shieldHeader
-                        connectionCard
-                        siteControlsSection
+                    VStack(spacing: AeroSpacing.lg) {
+                        siteHeader
+                        connectionSection
                         permissionsSection
-                        trackersSection
-                        blockerStatus
+                        contentBlockerSection
+                        trackerCategoriesSection
                     }
-                    .padding(AeroSpacing.lg)
+                    .padding(.horizontal, AeroSpacing.lg)
+                    .padding(.vertical, AeroSpacing.md)
                 }
             }
-            .navigationTitle("Site Status")
+            .navigationTitle("Site Info")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(AeroColor.accentCyan)
+                        .font(.system(.body, weight: .semibold))
+                        .foregroundStyle(AeroColor.accentTint)
                 }
             }
         }
     }
 
-    private var shieldHeader: some View {
-        VStack(spacing: AeroSpacing.md) {
-            ZStack {
-                Circle()
-                    .fill(viewModel.contentBlockerEnabled ? AeroColor.success.opacity(0.15) : AeroColor.warning.opacity(0.15))
-                    .frame(width: 80, height: 80)
+    private var siteHeader: some View {
+        statusPanel(spacing: AeroSpacing.lg) {
+            HStack(alignment: .center, spacing: AeroSpacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(currentSecurityColor.opacity(0.16))
+                        .frame(width: 64, height: 64)
 
-                Image(systemName: viewModel.contentBlockerEnabled ? "shield.checkered" : "shield.slash")
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundStyle(viewModel.contentBlockerEnabled ? AeroColor.success : AeroColor.warning)
+                    Image(systemName: securityIconName(for: securitySummary.status))
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(currentSecurityColor)
+                }
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                    Text(securitySummary.title)
+                        .font(AeroFont.title)
+                        .foregroundStyle(AeroColor.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.86)
+
+                    Text(siteStatus.displayHost)
+                        .font(AeroFont.body)
+                        .foregroundStyle(AeroColor.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
             }
 
-            Text(viewModel.contentBlockerEnabled ? "Protection Active" : "Protection Disabled")
-                .font(AeroFont.title)
-                .foregroundStyle(AeroColor.textPrimary)
-
-            Text(siteStatus.displayHost)
+            Text(securitySummary.explanation)
                 .font(AeroFont.caption)
                 .foregroundStyle(AeroColor.textSecondary)
-        }
-        .padding(.vertical, AeroSpacing.lg)
-    }
+                .fixedSize(horizontal: false, vertical: true)
 
-    private var connectionCard: some View {
-        VStack(alignment: .leading, spacing: AeroSpacing.md) {
-            Text("CONNECTION")
-                .font(AeroFont.caption)
-                .foregroundStyle(AeroColor.textTertiary)
-                .tracking(1.0)
-
-            VStack(alignment: .leading, spacing: AeroSpacing.md) {
-                HStack(alignment: .top, spacing: AeroSpacing.md) {
-                    Image(systemName: securityIconName(for: securitySummary.status))
-                        .font(.system(size: 20))
-                        .foregroundStyle(securityColor(for: securitySummary.status))
-                        .frame(width: 32, height: 32)
-                        .background(securityColor(for: securitySummary.status).opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
-
-                    VStack(alignment: .leading, spacing: AeroSpacing.xs) {
-                        Text(securitySummary.title)
-                            .font(AeroFont.body)
-                            .foregroundStyle(AeroColor.textPrimary)
-
-                        Text(securitySummary.explanation)
-                            .font(AeroFont.captionSmall)
-                            .foregroundStyle(AeroColor.textTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: AeroSpacing.sm) {
+                    statusChip(
+                        icon: securityIconName(for: securitySummary.status),
+                        text: connectionChipTitle,
+                        color: currentSecurityColor
+                    )
+                    statusChip(
+                        icon: siteStatus.contentBlocker == .enabled ? "shield.checkered" : "shield.slash",
+                        text: contentBlockerValue,
+                        color: contentBlockerColor
+                    )
                     Spacer(minLength: 0)
                 }
 
-                Divider()
-
-                VStack(spacing: AeroSpacing.sm) {
-                    ForEach(securitySummary.detailRows) { row in
-                        HStack(alignment: .firstTextBaseline, spacing: AeroSpacing.md) {
-                            Text(row.label)
-                                .font(AeroFont.captionSmall)
-                                .foregroundStyle(AeroColor.textTertiary)
-
-                            Spacer(minLength: AeroSpacing.md)
-
-                            Text(row.value)
-                                .font(AeroFont.captionSmall)
-                                .foregroundStyle(AeroColor.textPrimary)
-                                .multilineTextAlignment(.trailing)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.85)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: AeroSpacing.sm) {
+                    statusChip(
+                        icon: securityIconName(for: securitySummary.status),
+                        text: connectionChipTitle,
+                        color: currentSecurityColor
+                    )
+                    statusChip(
+                        icon: siteStatus.contentBlocker == .enabled ? "shield.checkered" : "shield.slash",
+                        text: contentBlockerValue,
+                        color: contentBlockerColor
+                    )
                 }
             }
-            .padding(AeroSpacing.lg)
-            .background(AeroColor.backgroundSecondary, in: RoundedRectangle(cornerRadius: AeroRadius.md))
         }
     }
 
-    private var siteControlsSection: some View {
-        VStack(alignment: .leading, spacing: AeroSpacing.md) {
-            Text("SITE STATUS")
-                .font(AeroFont.caption)
-                .foregroundStyle(AeroColor.textTertiary)
-                .tracking(1.0)
+    private var connectionSection: some View {
+        section("Connection & Certificate") {
+            VStack(spacing: 0) {
+                infoRow(
+                    icon: "globe",
+                    title: "Host",
+                    value: securitySummary.host,
+                    detail: activePageDetail,
+                    color: AeroColor.accentBlue
+                )
 
-            statusRow(
-                icon: "globe",
-                title: "Site",
-                value: siteStatus.displayHost,
-                detail: viewModel.activeTab?.displayURL?.absoluteString ?? "No page loaded",
-                color: AeroColor.accentBlue
-            )
+                rowDivider
 
-            statusRow(
-                icon: "shield.fill",
-                title: "Content Blocker",
-                value: contentBlockerValue,
-                detail: contentBlockerDetail,
-                color: siteStatus.contentBlocker == .enabled ? AeroColor.success : AeroColor.warning
-            )
+                infoRow(
+                    icon: securityIconName(for: securitySummary.status),
+                    title: "Connection",
+                    value: connectionValue,
+                    detail: securitySummary.explanation,
+                    color: currentSecurityColor
+                )
+
+                rowDivider
+
+                infoRow(
+                    icon: "checkmark.seal.fill",
+                    title: "Certificate",
+                    value: securitySummary.certificateStatus,
+                    detail: certificateDetail,
+                    color: certificateColor
+                )
+
+                if let fingerprint = securitySummary.certificateSummary?.shortFingerprint {
+                    rowDivider
+
+                    infoRow(
+                        icon: "number",
+                        title: "SHA-256",
+                        value: fingerprint,
+                        detail: "Leaf certificate fingerprint",
+                        color: AeroColor.textSecondary
+                    )
+                }
+            }
+            .statusPanelPadding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous))
+            .overlay(cardStroke(cornerRadius: AeroRadius.md))
         }
     }
 
     private var permissionsSection: some View {
-        VStack(alignment: .leading, spacing: AeroSpacing.md) {
-            Text("SITE PERMISSIONS")
-                .font(AeroFont.caption)
-                .foregroundStyle(AeroColor.textTertiary)
-                .tracking(1.0)
+        section("Site Permissions") {
+            VStack(spacing: 0) {
+                ForEach(siteStatus.permissions) { permission in
+                    permissionRow(permission)
 
-            ForEach(siteStatus.permissions) { permission in
-                statusRow(
-                    icon: permissionIcon(for: permission.kind),
-                    title: permissionTitle(for: permission.kind),
-                    value: dispositionTitle(for: permission.disposition),
-                    detail: permissionDetail(for: permission),
-                    color: dispositionColor(for: permission.disposition)
-                )
+                    if permission.id != siteStatus.permissions.last?.id {
+                        rowDivider
+                    }
+                }
             }
+            .statusPanelPadding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous))
+            .overlay(cardStroke(cornerRadius: AeroRadius.md))
         }
     }
 
-    private var trackersSection: some View {
-        VStack(alignment: .leading, spacing: AeroSpacing.md) {
-            Text("TRACKER CATEGORIES")
-                .font(AeroFont.caption)
-                .foregroundStyle(AeroColor.textTertiary)
-                .tracking(1.0)
+    private var contentBlockerSection: some View {
+        section("Content Blocker") {
+            Toggle(isOn: $viewModel.contentBlockerEnabled) {
+                HStack(alignment: .top, spacing: AeroSpacing.md) {
+                    symbolTile(
+                        icon: siteStatus.contentBlocker == .enabled ? "shield.checkered" : "shield.slash",
+                        color: contentBlockerColor
+                    )
 
-            ForEach(trackerCategories, id: \.name) { category in
-                HStack(spacing: AeroSpacing.md) {
-                    Image(systemName: category.icon)
-                        .font(.system(size: 16))
-                        .foregroundStyle(category.color)
-                        .frame(width: 32, height: 32)
-                        .background(category.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(category.name)
+                    VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                        Text(contentBlockerValue)
                             .font(AeroFont.body)
                             .foregroundStyle(AeroColor.textPrimary)
+                            .lineLimit(1)
 
-                        Text("\(category.domains.count) known domains")
+                        Text(contentBlockerDetail)
                             .font(AeroFont.captionSmall)
                             .foregroundStyle(AeroColor.textTertiary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .tint(AeroColor.accentTint)
+            .padding(AeroSpacing.lg)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous))
+            .overlay(cardStroke(cornerRadius: AeroRadius.md))
+        }
+    }
+
+    private var trackerCategoriesSection: some View {
+        section("Tracker Categories") {
+            VStack(spacing: AeroSpacing.sm) {
+                ForEach(trackerCategories, id: \.name) { category in
+                    HStack(alignment: .top, spacing: AeroSpacing.md) {
+                        symbolTile(icon: category.icon, color: category.color)
+
+                        VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                            Text(category.name)
+                                .font(AeroFont.body)
+                                .foregroundStyle(AeroColor.textPrimary)
+                                .lineLimit(1)
+
+                            Text("\(category.domains.count) known domains")
+                                .font(AeroFont.captionSmall)
+                                .foregroundStyle(AeroColor.textTertiary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: AeroSpacing.sm)
+
+                        Image(systemName: viewModel.contentBlockerEnabled ? "checkmark.shield.fill" : "xmark.shield")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(viewModel.contentBlockerEnabled ? AeroColor.success : AeroColor.textTertiary)
+                            .frame(width: 28, height: 28)
+                            .accessibilityLabel(viewModel.contentBlockerEnabled ? "Blocked" : "Not blocked")
+                    }
+                    .padding(AeroSpacing.md)
+                    .background(AeroColor.backgroundSecondary.opacity(0.72), in: RoundedRectangle(cornerRadius: AeroRadius.sm, style: .continuous))
+                    .overlay(cardStroke(cornerRadius: AeroRadius.sm, opacity: 0.18))
+                }
+            }
+        }
+    }
+
+    private func permissionRow(_ permission: SitePermissionStatus) -> some View {
+        HStack(alignment: .top, spacing: AeroSpacing.md) {
+            symbolTile(
+                icon: permissionIcon(for: permission.kind),
+                color: dispositionColor(for: permission.disposition)
+            )
+
+            VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: AeroSpacing.sm) {
+                        Text(permissionTitle(for: permission.kind))
+                            .font(AeroFont.body)
+                            .foregroundStyle(AeroColor.textPrimary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: AeroSpacing.sm)
+
+                        pill(
+                            dispositionTitle(for: permission.disposition),
+                            color: dispositionColor(for: permission.disposition)
+                        )
                     }
 
-                    Spacer()
+                    VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                        Text(permissionTitle(for: permission.kind))
+                            .font(AeroFont.body)
+                            .foregroundStyle(AeroColor.textPrimary)
+                            .lineLimit(1)
 
-                    Image(systemName: viewModel.contentBlockerEnabled ? "checkmark.shield.fill" : "xmark.shield")
-                        .foregroundStyle(viewModel.contentBlockerEnabled ? AeroColor.success : AeroColor.textTertiary)
+                        pill(
+                            dispositionTitle(for: permission.disposition),
+                            color: dispositionColor(for: permission.disposition)
+                        )
+                    }
                 }
-                .padding(AeroSpacing.md)
-                .background(AeroColor.backgroundSecondary, in: RoundedRectangle(cornerRadius: AeroRadius.md))
+
+                Text(permissionDetail(for: permission))
+                    .font(AeroFont.captionSmall)
+                    .foregroundStyle(AeroColor.textTertiary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(.vertical, AeroSpacing.md)
     }
 
-    private var blockerStatus: some View {
-        Toggle(isOn: $viewModel.contentBlockerEnabled) {
-            HStack(spacing: AeroSpacing.md) {
-                Image(systemName: "shield.fill")
-                    .foregroundStyle(AeroColor.accentCyan)
-                Text("Content Blocker")
-                    .font(AeroFont.body)
-                    .foregroundStyle(AeroColor.textPrimary)
-            }
-        }
-        .tint(AeroColor.accentCyan)
-        .padding(AeroSpacing.lg)
-        .background(AeroColor.backgroundSecondary, in: RoundedRectangle(cornerRadius: AeroRadius.md))
-    }
-
-    private func statusRow(
+    private func infoRow(
         icon: String,
         title: String,
         value: String,
         detail: String,
         color: Color
     ) -> some View {
-        HStack(spacing: AeroSpacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(color)
-                .frame(width: 32, height: 32)
-                .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        HStack(alignment: .top, spacing: AeroSpacing.md) {
+            symbolTile(icon: icon, color: color)
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: AeroSpacing.sm) {
-                    Text(title)
-                        .font(AeroFont.body)
-                        .foregroundStyle(AeroColor.textPrimary)
+            VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: AeroSpacing.sm) {
+                        Text(title)
+                            .font(AeroFont.body)
+                            .foregroundStyle(AeroColor.textPrimary)
+                            .lineLimit(1)
 
-                    Spacer(minLength: AeroSpacing.sm)
+                        Spacer(minLength: AeroSpacing.sm)
 
-                    Text(value)
-                        .font(AeroFont.caption)
-                        .foregroundStyle(color)
-                        .lineLimit(1)
+                        Text(value)
+                            .font(AeroFont.caption)
+                            .foregroundStyle(color)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.82)
+                    }
+
+                    VStack(alignment: .leading, spacing: AeroSpacing.xs) {
+                        Text(title)
+                            .font(AeroFont.body)
+                            .foregroundStyle(AeroColor.textPrimary)
+                            .lineLimit(1)
+
+                        Text(value)
+                            .font(AeroFont.caption)
+                            .foregroundStyle(color)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.82)
+                    }
                 }
 
                 Text(detail)
                     .font(AeroFont.captionSmall)
                     .foregroundStyle(AeroColor.textTertiary)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(AeroSpacing.md)
-        .background(AeroColor.backgroundSecondary, in: RoundedRectangle(cornerRadius: AeroRadius.md))
+        .padding(.vertical, AeroSpacing.md)
+    }
+
+    private func section<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: AeroSpacing.sm) {
+            Text(title.uppercased())
+                .font(AeroFont.caption)
+                .foregroundStyle(AeroColor.textTertiary)
+                .tracking(0.8)
+                .lineLimit(1)
+
+            content()
+        }
+    }
+
+    private func statusPanel<Content: View>(
+        spacing: CGFloat = AeroSpacing.md,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            content()
+        }
+        .padding(AeroSpacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.lg, style: .continuous))
+        .overlay(cardStroke(cornerRadius: AeroRadius.lg, opacity: 0.32))
+    }
+
+    private func symbolTile(icon: String, color: Color) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: 34, height: 34)
+            .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: AeroRadius.sm, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    private func statusChip(icon: String, text: String, color: Color) -> some View {
+        Label {
+            Text(text)
+                .font(AeroFont.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.88)
+        } icon: {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, AeroSpacing.sm)
+        .padding(.vertical, AeroSpacing.xs)
+        .background(color.opacity(0.12), in: Capsule())
+        .overlay(
+            Capsule()
+                .strokeBorder(color.opacity(0.24), lineWidth: 0.5)
+        )
+    }
+
+    private func pill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(AeroFont.captionSmall)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, AeroSpacing.sm)
+            .padding(.vertical, AeroSpacing.xs)
+            .background(color.opacity(0.12), in: Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(color.opacity(0.24), lineWidth: 0.5)
+            )
+    }
+
+    private func cardStroke(cornerRadius: CGFloat, opacity: Double = 0.24) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .strokeBorder(AeroColor.surfaceBorder.opacity(opacity), lineWidth: 0.5)
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .padding(.leading, 46)
+            .opacity(0.42)
     }
 
     private func securityIconName(for status: SecuritySummary.Status) -> String {
@@ -284,6 +453,61 @@ struct TrackerReceiptView: View {
         }
     }
 
+    private var currentSecurityColor: Color {
+        securityColor(for: securitySummary.status)
+    }
+
+    private var certificateColor: Color {
+        guard securitySummary.isHTTPS else { return AeroColor.textTertiary }
+        return securitySummary.certificateSummary == nil ? AeroColor.warning : AeroColor.success
+    }
+
+    private var certificateDetail: String {
+        guard securitySummary.isHTTPS else {
+            return "Certificate details do not apply to this page."
+        }
+
+        guard let certificateSummary = securitySummary.certificateSummary else {
+            return "Aero has not received a matching server certificate summary for this page."
+        }
+
+        return "\(certificateSummary.certificateCount) certificate\(certificateSummary.certificateCount == 1 ? "" : "s") in the verified server chain."
+    }
+
+    private var activePageDetail: String {
+        viewModel.activeTab?.displayURL?.absoluteString ?? "No page loaded"
+    }
+
+    private var connectionChipTitle: String {
+        switch securitySummary.status {
+        case .secureHTTPS:
+            return "HTTPS"
+        case .insecureHTTP:
+            return "HTTP"
+        case .browserPage:
+            return "Local"
+        case .noPage:
+            return "No Page"
+        case .nonWebScheme:
+            return securitySummary.scheme
+        }
+    }
+
+    private var connectionValue: String {
+        switch securitySummary.status {
+        case .secureHTTPS:
+            return "Encrypted"
+        case .insecureHTTP:
+            return "Not secure"
+        case .browserPage:
+            return "Local page"
+        case .noPage:
+            return "Unavailable"
+        case .nonWebScheme:
+            return securitySummary.scheme
+        }
+    }
+
     private var contentBlockerValue: String {
         switch siteStatus.contentBlocker {
         case .enabled:
@@ -293,12 +517,21 @@ struct TrackerReceiptView: View {
         }
     }
 
+    private var contentBlockerColor: Color {
+        switch siteStatus.contentBlocker {
+        case .enabled:
+            return AeroColor.success
+        case .disabled:
+            return AeroColor.warning
+        }
+    }
+
     private var contentBlockerDetail: String {
         switch siteStatus.contentBlocker {
         case .enabled:
-            return "Aero's tracker protection toggle is on"
+            return "Aero's tracker protection toggle is on."
         case .disabled:
-            return "Aero's tracker protection toggle is off"
+            return "Aero's tracker protection toggle is off."
         }
     }
 
@@ -354,18 +587,24 @@ struct TrackerReceiptView: View {
         switch permission.kind {
         case .camera:
             return permission.wasObservedThisSession
-                ? "This site requested camera access during this session"
-                : "WebKit will show a system prompt when this site asks"
+                ? "This site requested camera access during this session."
+                : "WebKit will show a system prompt when this site asks."
         case .microphone:
             return permission.wasObservedThisSession
-                ? "This site requested microphone access during this session"
-                : "WebKit will show a system prompt when this site asks"
+                ? "This site requested microphone access during this session."
+                : "WebKit will show a system prompt when this site asks."
         case .location:
-            return "Aero does not manage website location permission yet"
+            return "Aero does not manage website location permission yet."
         case .popups:
             return permission.wasObservedThisSession
-                ? "This site attempted a new window; Aero opened it here"
-                : "New-window requests use Aero's default handling"
+                ? "This site attempted a new window; Aero opened it here."
+                : "New-window requests use Aero's default handling."
         }
+    }
+}
+
+private extension View {
+    func statusPanelPadding() -> some View {
+        padding(.horizontal, AeroSpacing.md)
     }
 }
