@@ -35,6 +35,17 @@ struct BrowserSheets: ViewModifier {
                     viewModel: viewModel
                 )
             }
+            .sheet(
+                item: $viewModel.pendingJavaScriptDialog,
+                onDismiss: {
+                    viewModel.javaScriptDialogDidDismiss()
+                }
+            ) { request in
+                JavaScriptDialogSheet(
+                    request: request,
+                    viewModel: viewModel
+                )
+            }
     }
 }
 

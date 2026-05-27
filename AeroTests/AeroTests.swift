@@ -4,6 +4,75 @@ import Testing
 
 struct AeroTests {
 
+    @Test func javaScriptAlertCompletionRunsOnceWhenAccepted() {
+        var completionCount = 0
+        let request = JavaScriptDialogRequest(
+            kind: .alert,
+            message: "Hello",
+            sourceHost: "example.com",
+            completion: .alert {
+                completionCount += 1
+            }
+        )
+
+        request.accept()
+        request.accept()
+        request.cancel()
+
+        #expect(completionCount == 1)
+    }
+
+    @Test func javaScriptConfirmCancelReturnsFalseOnce() {
+        var results: [Bool] = []
+        let request = JavaScriptDialogRequest(
+            kind: .confirm,
+            message: "Continue?",
+            sourceHost: "example.com",
+            completion: .confirm {
+                results.append($0)
+            }
+        )
+
+        request.cancel()
+        request.accept()
+
+        #expect(results == [false])
+    }
+
+    @Test func javaScriptPromptAcceptReturnsEnteredTextOnce() {
+        var results: [String?] = []
+        let request = JavaScriptDialogRequest(
+            kind: .prompt(defaultText: "Default"),
+            message: "Name",
+            sourceHost: "example.com",
+            completion: .prompt {
+                results.append($0)
+            }
+        )
+
+        request.accept(promptText: "Ada")
+        request.cancel()
+
+        #expect(results.count == 1)
+        #expect(results[0] == "Ada")
+    }
+
+    @Test func javaScriptPromptAcceptUsesDefaultTextWhenNoTextProvided() {
+        var result: String?
+        let request = JavaScriptDialogRequest(
+            kind: .prompt(defaultText: "Default"),
+            message: "Name",
+            sourceHost: "example.com",
+            completion: .prompt {
+                result = $0
+            }
+        )
+
+        request.accept()
+
+        #expect(result == "Default")
+    }
+
     @Test func chromeStaysExpandedAtTop() {
         var controller = BrowserChromeController()
 

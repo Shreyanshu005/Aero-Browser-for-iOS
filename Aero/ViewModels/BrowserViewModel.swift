@@ -17,6 +17,9 @@ final class BrowserViewModel {
     @ObservationIgnored
     private let suggestionProvider = LocalSuggestionProvider()
 
+    @ObservationIgnored
+    private var queuedJavaScriptDialogs: [JavaScriptDialogRequest] = []
+
     var tabManager: TabManager
     var historyStore: HistoryStore
     var favoritesStore: FavoritesStore
@@ -42,6 +45,7 @@ final class BrowserViewModel {
     var showFindInPage: Bool = false
     var showTrackerReceipt: Bool = false
     var pendingDownload: PendingDownload?
+    var pendingJavaScriptDialog: JavaScriptDialogRequest?
 
 
     var activeTab: Tab? { tabManager.activeTab }
@@ -58,6 +62,11 @@ final class BrowserViewModel {
         Task {
             await contentBlocker.compileRules()
         }
+    }
+
+    deinit {
+        pendingJavaScriptDialog?.cancel()
+        queuedJavaScriptDialogs.forEach { $0.cancel() }
     }
 
 
@@ -94,6 +103,8 @@ final class BrowserViewModel {
             tabManager.saveSession()
         case .didRequestDownload(let pendingDownload):
             requestDownload(pendingDownload)
+        case .didRequestJavaScriptDialog(let request):
+            requestJavaScriptDialog(request)
         case .didScroll(let metrics):
             guard activeTab?.url != nil,
                   isAddressBarFocused == false,
@@ -144,5 +155,51 @@ final class BrowserViewModel {
     func cancelPendingDownload(id: UUID) {
         guard pendingDownload?.id == id else { return }
         pendingDownload = nil
+    }
+
+    func requestJavaScriptDialog(_ request: JavaScriptDialogRequest) {
+        guard pendingJavaScriptDialog == nil else {
+            queuedJavaScriptDialogs.append(request)
+            return
+        }
+
+        pendingJavaScriptDialog = request
+        chromeController.expand()
+    }
+
+    func acceptJavaScriptDialog(id: UUID, promptText: String? = nil) {
+        guard let request = pendingJavaScriptDialog, request.id == id else { return }
+
+        request.accept(promptText: promptText)
+        if pendingJavaScriptDialog?.id == id {
+            pendingJavaScriptDialog = nil
+        }
+    }
+
+    func cancelJavaScriptDialog(id: UUID) {
+        guard let request = pendingJavaScriptDialog, request.id == id else { return }
+
+        request.cancel()
+        if pendingJavaScriptDialog?.id == id {
+            pendingJavaScriptDialog = nil
+        }
+    }
+
+    func javaScriptDialogDidDismiss() {
+        if let request = pendingJavaScriptDialog {
+            request.cancel()
+            if pendingJavaScriptDialog?.id == request.id {
+                pendingJavaScriptDialog = nil
+            }
+        }
+
+        presentNextQueuedJavaScriptDialog()
+    }
+
+    private func presentNextQueuedJavaScriptDialog() {
+        guard pendingJavaScriptDialog == nil, !queuedJavaScriptDialogs.isEmpty else { return }
+
+        pendingJavaScriptDialog = queuedJavaScriptDialogs.removeFirst()
+        chromeController.expand()
     }
 }
