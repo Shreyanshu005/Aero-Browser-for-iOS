@@ -583,6 +583,86 @@ struct AeroTests {
         #expect(sessionStore.savedSessions.count == initialSaveCount)
     }
 
+    @Test func tabManagerReopensLastClosedTabAsActiveTab() {
+        let store = SpySessionStore(loadResult: nil)
+        let manager = TabManager(sessionStore: store)
+
+        let firstURL = URL(string: "https://example.com")!
+        let closedURL = URL(string: "https://swift.org")!
+        let firstTab = manager.loadInActiveTabAndReturnActiveTab(url: firstURL)
+        firstTab.title = "Example"
+        let closedTab = manager.newTab(url: closedURL)
+        closedTab.title = "Swift"
+        let closedCreatedAt = closedTab.createdAt
+        let closedLastAccessedAt = closedTab.lastAccessedAt
+
+        manager.closeTab(id: closedTab.id)
+
+        #expect(manager.tabs.map { $0.url } == [firstURL])
+        #expect(manager.recentlyClosedTabCount == 1)
+        #expect(manager.canReopenLastClosedTab)
+
+        let reopenedTab = manager.reopenLastClosedTab()
+
+        #expect(reopenedTab?.url == closedURL)
+        #expect(reopenedTab?.title == "Swift")
+        #expect(reopenedTab?.createdAt == closedCreatedAt)
+        #expect(reopenedTab?.lastAccessedAt == closedLastAccessedAt)
+        #expect(manager.activeTab?.id == reopenedTab?.id)
+        #expect(manager.tabs.map { $0.url } == [firstURL, closedURL])
+        #expect(manager.recentlyClosedTabCount == 0)
+        #expect(store.savedSessions.last?.tabs.map { $0.url } == [firstURL, closedURL])
+        #expect(store.savedSessions.last?.activeTabIndex == 1)
+    }
+
+    @Test func tabManagerReopensTabsInLastClosedOrder() {
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+
+        let firstURL = URL(string: "https://example.com")!
+        let secondURL = URL(string: "https://swift.org")!
+        let thirdURL = URL(string: "https://developer.apple.com")!
+        let firstTab = manager.loadInActiveTabAndReturnActiveTab(url: firstURL)
+        let secondTab = manager.newTab(url: secondURL)
+        let thirdTab = manager.newTab(url: thirdURL)
+
+        manager.closeTab(id: secondTab.id)
+        manager.closeTab(id: thirdTab.id)
+
+        let firstReopenedTab = manager.reopenLastClosedTab()
+        let secondReopenedTab = manager.reopenLastClosedTab()
+
+        #expect(manager.tabs.first?.id == firstTab.id)
+        #expect(firstReopenedTab?.url == thirdURL)
+        #expect(secondReopenedTab?.url == secondURL)
+        #expect(manager.reopenLastClosedTab() == nil)
+    }
+
+    @Test func tabManagerCapsRecentlyClosedTabsAtMaximum() {
+        let manager = TabManager(sessionStore: SpySessionStore(loadResult: nil))
+        let closedTabCount = TabManager.maxRecentlyClosedTabs + 3
+
+        for index in 0..<closedTabCount {
+            let url = URL(string: "https://example.com/\(index)")!
+            let tab = manager.loadInActiveTabAndReturnActiveTab(url: url)
+            manager.closeTab(id: tab.id)
+        }
+
+        #expect(manager.recentlyClosedTabCount == TabManager.maxRecentlyClosedTabs)
+
+        var reopenedURLs: [String] = []
+        for _ in 0..<TabManager.maxRecentlyClosedTabs {
+            if let urlString = manager.reopenLastClosedTab()?.url?.absoluteString {
+                reopenedURLs.append(urlString)
+            }
+        }
+
+        let expectedURLs = (3..<closedTabCount)
+            .reversed()
+            .map { "https://example.com/\($0)" }
+        #expect(reopenedURLs == expectedURLs)
+        #expect(!manager.canReopenLastClosedTab)
+    }
+
 }
 
 private func temporaryFileURL(prefix: String, fileExtension pathExtension: String) -> URL {

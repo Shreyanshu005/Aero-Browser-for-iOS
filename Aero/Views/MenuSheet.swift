@@ -50,6 +50,16 @@ struct MenuSheet: View {
                 }
 
 
+                if viewModel.canReopenLastClosedTab {
+                    Section {
+                        menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
+                            viewModel.reopenLastClosedTab()
+                            dismiss()
+                        }
+                    }
+                }
+
+
                 Section {
                     menuButton("eye.slash", "New Private Tab") {
                         dismiss()

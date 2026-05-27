@@ -1,6 +1,10 @@
 import SwiftUI
 
 extension BrowserViewModel {
+    var canReopenLastClosedTab: Bool {
+        tabManager.canReopenLastClosedTab
+    }
+
     func showTabGrid() {
         activeTab?.captureSnapshot()
         chromeController.expand()
@@ -48,5 +52,17 @@ extension BrowserViewModel {
         withAnimation(AeroAnimation.snappy) {
             tabManager.closeTab(id: tab.id)
         }
+    }
+
+    func reopenLastClosedTab() {
+        guard tabManager.canReopenLastClosedTab else { return }
+
+        withAnimation(AeroAnimation.snappy) {
+            _ = tabManager.reopenLastClosedTab()
+            isShowingTabGrid = false
+        }
+        isAddressBarFocused = false
+        syncAddressBarWithActiveTab()
+        chromeController.expand()
     }
 }
