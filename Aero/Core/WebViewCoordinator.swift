@@ -15,6 +15,8 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     private let externalURLPolicy: ExternalURLPolicy
     private let externalURLOpener: ExternalURLOpening
     private var observations: [NSKeyValueObservation] = []
+    private var mainFrameNavigationHost: String?
+    private var latestServerCertificateSummary: CertificateSummary?
 
     init(
         tab: Tab,
@@ -62,9 +64,13 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         observations.append(
             webView.observe(\.url, options: .new) { [weak self] wv, _ in
                 DispatchQueue.main.async {
-                    self?.tab.url = wv.url
-                    self?.tab.isSecure = wv.url?.isSecure ?? false
-                    self?.onNavigationEvent(.didUpdateURL(wv.url))
+                    guard let self else { return }
+                    self.tab.url = wv.url
+                    if let certificateSummary = self.latestServerCertificateSummary,
+                       certificateSummary.matches(host: wv.url?.host) {
+                        self.tab.updateServerCertificateSummary(certificateSummary)
+                    }
+                    self.onNavigationEvent(.didUpdateURL(wv.url))
                 }
             }
         )
@@ -126,9 +132,35 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
     func webView(
         _ webView: WKWebView,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        let host = challenge.protectionSpace.host
+        if shouldCaptureServerTrust(for: host, webView: webView),
+           let certificateSummary = CertificateSummaryParser.summary(from: serverTrust, host: host) {
+            latestServerCertificateSummary = certificateSummary
+            tab.updateServerCertificateSummary(certificateSummary)
+        }
+
+        completionHandler(.performDefaultHandling, nil)
+    }
+
+    func webView(
+        _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        let isMainFrameNavigation = navigationAction.targetFrame?.isMainFrame ?? true
+        if isMainFrameNavigation {
+            prepareForMainFrameNavigation(to: navigationAction.request.url)
+        }
+
         if navigationAction.shouldPerformDownload,
            let url = navigationAction.request.url {
             onNavigationEvent(
@@ -292,5 +324,34 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     private func javascriptDialogSourceHost(frame: WKFrameInfo, webView: WKWebView) -> String {
         let url = frame.request.url ?? webView.url
         return url?.displayHost ?? "This Page"
+    }
+
+    private func prepareForMainFrameNavigation(to url: URL?) {
+        mainFrameNavigationHost = url?.host
+
+        if let latestServerCertificateSummary,
+           (!latestServerCertificateSummary.matches(host: url?.host) || url?.scheme?.lowercased() != "https") {
+            self.latestServerCertificateSummary = nil
+            tab.updateServerCertificateSummary(nil)
+        }
+    }
+
+    private func shouldCaptureServerTrust(for host: String, webView: WKWebView) -> Bool {
+        guard let normalizedHost = normalizedSecurityHost(host) else { return false }
+
+        let candidateHosts = [
+            mainFrameNavigationHost,
+            webView.url?.host,
+            tab.url?.host,
+        ]
+
+        return candidateHosts.contains { candidate in
+            normalizedSecurityHost(candidate) == normalizedHost
+        }
+    }
+
+    private func normalizedSecurityHost(_ host: String?) -> String? {
+        guard let host, !host.isEmpty else { return nil }
+        return host.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
     }
 }

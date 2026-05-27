@@ -12,7 +12,15 @@ import WebKit
 final class Tab: Identifiable {
     let id: UUID
     let browsingMode: BrowsingMode
-    var url: URL?
+    var url: URL? {
+        didSet {
+            if let serverCertificateSummary,
+               (!serverCertificateSummary.matches(host: url?.host) || url?.scheme?.lowercased() != "https") {
+                self.serverCertificateSummary = nil
+            }
+            refreshSecuritySummary()
+        }
+    }
     var title: String
     var navigationError: BrowserError?
 
@@ -31,10 +39,16 @@ final class Tab: Identifiable {
     var canGoBack: Bool = false
     var canGoForward: Bool = false
     var isSecure: Bool = false
+    var securitySummary: SecuritySummary = SecuritySummary(url: nil)
     var snapshot: UIImage?
     var favicon: UIImage?
     let createdAt: Date
     var lastAccessedAt: Date
+    private var serverCertificateSummary: CertificateSummary? {
+        didSet {
+            refreshSecuritySummary()
+        }
+    }
 
     var isPrivate: Bool {
         browsingMode == .privateBrowsing
@@ -57,6 +71,25 @@ final class Tab: Identifiable {
         self.title = title
         self.createdAt = createdAt
         self.lastAccessedAt = lastAccessedAt
+        refreshSecuritySummary()
+    }
+
+
+    func updateServerCertificateSummary(_ summary: CertificateSummary?) {
+        guard let summary else {
+            serverCertificateSummary = nil
+            return
+        }
+
+        guard summary.matches(host: url?.host) else { return }
+        serverCertificateSummary = summary
+    }
+
+
+    private func refreshSecuritySummary() {
+        let summary = SecuritySummary(url: url, certificateSummary: serverCertificateSummary)
+        securitySummary = summary
+        isSecure = summary.isSecure
     }
 
 
