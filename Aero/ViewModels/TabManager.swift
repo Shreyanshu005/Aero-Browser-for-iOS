@@ -13,11 +13,13 @@ import Observation
 final class TabManager {
     var tabs: [Tab] = []
     var activeTabIndex: Int = 0
+    private var recentlyClosedTabs: [RestoredTabState] = []
 
     @ObservationIgnored
     private let sessionStore: SessionStoring
 
     static let maxTabs = 100
+    static let maxRecentlyClosedTabs = 20
 
     var activeTab: Tab? {
         guard !tabs.isEmpty, activeTabIndex >= 0, activeTabIndex < tabs.count else {
@@ -27,6 +29,10 @@ final class TabManager {
     }
 
     var tabCount: Int { tabs.count }
+    var recentlyClosedTabCount: Int { recentlyClosedTabs.count }
+    var canReopenLastClosedTab: Bool {
+        !recentlyClosedTabs.isEmpty && tabs.count < Self.maxTabs
+    }
 
     init(sessionStore: SessionStoring = SessionStore()) {
         self.sessionStore = sessionStore
@@ -66,6 +72,8 @@ final class TabManager {
     func closeTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
 
+        let closedTabState = restoredState(for: tabs[index])
+        pushRecentlyClosedTab(closedTabState)
 
         tabs[index].webView?.stopLoading()
         tabs[index].webView = nil
@@ -84,6 +92,23 @@ final class TabManager {
         saveSession()
     }
 
+    @discardableResult
+    func reopenLastClosedTab() -> Tab? {
+        guard canReopenLastClosedTab else { return nil }
+
+        let state = recentlyClosedTabs.removeLast()
+        let tab = Tab(
+            url: state.url,
+            title: state.title,
+            createdAt: state.createdAt,
+            lastAccessedAt: state.lastAccessedAt
+        )
+        tabs.append(tab)
+        activeTabIndex = tabs.count - 1
+        saveSession()
+        return tab
+    }
+
 
     func switchToTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
@@ -99,6 +124,7 @@ final class TabManager {
 
     func closeAllTabs() {
         for tab in tabs {
+            pushRecentlyClosedTab(restoredState(for: tab))
             tab.webView?.stopLoading()
             tab.webView = nil
         }
@@ -133,6 +159,22 @@ final class TabManager {
             tabs: Array(restoredTabs)
         )
         sessionStore.saveSession(state)
+    }
+
+    private func restoredState(for tab: Tab) -> RestoredTabState {
+        RestoredTabState(
+            url: tab.url,
+            title: tab.title,
+            createdAt: tab.createdAt,
+            lastAccessedAt: tab.lastAccessedAt
+        )
+    }
+
+    private func pushRecentlyClosedTab(_ state: RestoredTabState) {
+        recentlyClosedTabs.append(state)
+        if recentlyClosedTabs.count > Self.maxRecentlyClosedTabs {
+            recentlyClosedTabs.removeFirst(recentlyClosedTabs.count - Self.maxRecentlyClosedTabs)
+        }
     }
 
     private func restore(_ session: BrowserSessionState) {

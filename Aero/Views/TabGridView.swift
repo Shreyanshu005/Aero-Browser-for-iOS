@@ -49,7 +49,16 @@ struct TabGridView: View {
                             viewModel.hideTabGrid()
                         }
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            viewModel.reopenLastClosedTab()
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward")
+                        }
+                        .disabled(!viewModel.canReopenLastClosedTab)
+                        .accessibilityLabel("Reopen Closed Tab")
+
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             viewModel.newTab()
