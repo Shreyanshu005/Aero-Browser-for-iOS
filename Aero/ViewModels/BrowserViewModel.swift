@@ -23,12 +23,24 @@ final class BrowserViewModel {
     var downloadManager: DownloadManager
     var contentBlocker: ContentBlocker
 
+    @ObservationIgnored
+    private let settingsStore: BrowserSettingsStoring
 
     var isShowingTabGrid: Bool = false
     var isAddressBarFocused: Bool = false
     var addressBarText: String = ""
-    var searchEngine: SearchEngine = .google
-    var contentBlockerEnabled: Bool = true
+    var searchEngine: SearchEngine {
+        didSet {
+            guard searchEngine != oldValue else { return }
+            saveSettings()
+        }
+    }
+    var contentBlockerEnabled: Bool {
+        didSet {
+            guard contentBlockerEnabled != oldValue else { return }
+            saveSettings()
+        }
+    }
     var chromeController = BrowserChromeController()
 
 
@@ -47,7 +59,11 @@ final class BrowserViewModel {
     var activeTab: Tab? { tabManager.activeTab }
     var chromeMode: BottomChromeMode { chromeController.mode }
 
-    init() {
+    init(settingsStore: BrowserSettingsStoring = BrowserSettingsStore()) {
+        self.settingsStore = settingsStore
+        let settings = settingsStore.loadSettings()
+        self.searchEngine = settings.searchEngine
+        self.contentBlockerEnabled = settings.contentBlockerEnabled
         self.tabManager = TabManager()
         self.historyStore = HistoryStore()
         self.favoritesStore = FavoritesStore()
@@ -58,6 +74,15 @@ final class BrowserViewModel {
         Task {
             await contentBlocker.compileRules()
         }
+    }
+
+    private func saveSettings() {
+        settingsStore.saveSettings(
+            BrowserSettings(
+                searchEngine: searchEngine,
+                contentBlockerEnabled: contentBlockerEnabled
+            )
+        )
     }
 
 
