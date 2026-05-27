@@ -12,15 +12,30 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            toolbarButton("chevron.left", enabled: viewModel.activeTab?.canGoBack ?? false) {
+            toolbarButton(
+                "chevron.left",
+                accessibilityLabel: "Back",
+                accessibilityIdentifier: "browser.toolbar.back",
+                enabled: viewModel.activeTab?.canGoBack ?? false
+            ) {
                 viewModel.goBack()
             }
 
-            toolbarButton("chevron.right", enabled: viewModel.activeTab?.canGoForward ?? false) {
+            toolbarButton(
+                "chevron.right",
+                accessibilityLabel: "Forward",
+                accessibilityIdentifier: "browser.toolbar.forward",
+                enabled: viewModel.activeTab?.canGoForward ?? false
+            ) {
                 viewModel.goForward()
             }
 
-            toolbarButton("square.and.arrow.up", enabled: viewModel.activeTab?.url != nil) {
+            toolbarButton(
+                "square.and.arrow.up",
+                accessibilityLabel: "Share",
+                accessibilityIdentifier: "browser.toolbar.share",
+                enabled: viewModel.activeTab?.url != nil
+            ) {
                 shareCurrentPage()
             }
 
@@ -39,15 +54,30 @@ struct ToolbarView: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
             .tint(Color(UIColor.label))
+            .accessibilityLabel("Tabs")
+            .accessibilityValue(Text("\(viewModel.tabManager.tabCount)"))
+            .accessibilityIdentifier("browser.toolbar.tabs")
 
-            toolbarButton("line.3.horizontal", enabled: true) {
+            toolbarButton(
+                "line.3.horizontal",
+                accessibilityLabel: "Menu",
+                accessibilityIdentifier: "browser.toolbar.menu",
+                enabled: true
+            ) {
                 viewModel.showMenu = true
             }
         }
+        .accessibilityIdentifier("browser.toolbar")
     }
 
     @ViewBuilder
-    private func toolbarButton(_ icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func toolbarButton(
+        _ icon: String,
+        accessibilityLabel: String,
+        accessibilityIdentifier: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
@@ -58,6 +88,8 @@ struct ToolbarView: View {
         }
         .tint(Color(UIColor.label))
         .disabled(!enabled)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private func shareCurrentPage() {

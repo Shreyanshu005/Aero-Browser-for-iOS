@@ -35,6 +35,7 @@ struct SettingsView: View {
 
                 Section("Privacy") {
                     Toggle("Content Blocker", isOn: $viewModel.contentBlockerEnabled)
+                        .accessibilityIdentifier("browser.settings.contentBlocker")
 
                     Button("Clear History", role: .destructive) {
                         viewModel.historyStore.clearHistory()
@@ -54,12 +55,15 @@ struct SettingsView: View {
                     LabeledContent("Engine", value: "WebKit")
                 }
             }
+            .accessibilityIdentifier("browser.settings.list")
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("browser.settings.done")
                 }
             }
         }
+        .accessibilityIdentifier("browser.settings.sheet")
     }
 }

@@ -45,6 +45,8 @@ struct BottomBrowserChromeView: View {
                             .background(.thinMaterial, in: Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel Address Entry")
+                    .accessibilityIdentifier("browser.addressBar.cancel")
                     .transition(.chromeBlurReplace)
                 }
             }
@@ -109,6 +111,9 @@ private struct CompactAddressPill: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Address Bar")
+        .accessibilityValue(Text(displayText))
+        .accessibilityIdentifier("browser.compactAddressBar")
         .gesture(openTabsDragGesture)
     }
 

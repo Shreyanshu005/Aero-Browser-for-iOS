@@ -25,6 +25,8 @@ struct AddressBar: View {
                     .keyboardType(.webSearch)
                     .submitLabel(.go)
                     .focused($isFocused)
+                    .accessibilityLabel("Address Bar")
+                    .accessibilityIdentifier("browser.addressBar.textField")
                     .onSubmit {
                         viewModel.submitAddressBar()
                     }
@@ -34,6 +36,7 @@ struct AddressBar: View {
                     .foregroundStyle(displayTextColor)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .accessibilityIdentifier("browser.addressBar.display")
             }
 
             if viewModel.activeTab?.isLoading == true {
@@ -42,16 +45,21 @@ struct AddressBar: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Stop Loading")
+                .accessibilityIdentifier("browser.addressBar.stopLoading")
             } else if viewModel.activeTab?.url != nil {
                 Button { viewModel.reload() } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Reload")
+                .accessibilityIdentifier("browser.addressBar.reload")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .accessibilityIdentifier("browser.addressBar")
         .contentShape(Rectangle())
         .onTapGesture {
             if !viewModel.isAddressBarFocused {

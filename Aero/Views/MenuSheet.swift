@@ -85,16 +85,20 @@ struct MenuSheet: View {
                             viewModel.showSettings = true
                         }
                     }
+                    .accessibilityIdentifier("browser.menu.settings")
                 }
             }
+            .accessibilityIdentifier("browser.menu.list")
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("browser.menu.done")
                 }
             }
         }
+        .accessibilityIdentifier("browser.menu.sheet")
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

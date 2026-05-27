@@ -41,6 +41,7 @@ struct TabGridView: View {
                     .padding(.top, AeroSpacing.md)
                     .padding(.bottom, 48)
                 }
+                .accessibilityIdentifier("browser.tabGrid.scrollView")
                 .navigationTitle("\(viewModel.tabManager.tabCount) Tabs")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -48,6 +49,7 @@ struct TabGridView: View {
                         Button("Done") {
                             viewModel.hideTabGrid()
                         }
+                        .accessibilityIdentifier("browser.tabGrid.done")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -56,15 +58,19 @@ struct TabGridView: View {
                         } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityLabel("New Tab")
+                        .accessibilityIdentifier("browser.tabGrid.newTab")
                     }
                 }
                 .background(Color(UIColor.systemBackground).opacity(0.86))
             }
+            .accessibilityIdentifier("browser.tabGrid.navigation")
             .clipShape(RoundedRectangle(cornerRadius: AeroRadius.lg))
             .padding(.horizontal, AeroSpacing.sm)
             .padding(.top, AeroSpacing.xl)
             .padding(.bottom, AeroSpacing.sm)
             .shadow(color: Color.black.opacity(0.18), radius: 24, y: 12)
         }
+        .accessibilityIdentifier("browser.tabGrid")
     }
 }
