@@ -143,6 +143,7 @@ final class DownloadManager: NSObject {
         downloads[index].state = .completed
         downloads[index].progress = 1.0
         activeWebKitDownloads.removeValue(forKey: id)
+        showToast(filename: downloads[index].filename, status: .completed)
         saveDownloadHistory()
     }
 
@@ -151,11 +152,12 @@ final class DownloadManager: NSObject {
         downloads[index].state = .failed
         downloads[index].errorMessage = error.localizedDescription
         activeWebKitDownloads.removeValue(forKey: id)
+        showToast(filename: downloads[index].filename, status: .failed)
         saveDownloadHistory()
     }
 
-    private func showToast(filename: String) {
-        let toast = DownloadToast(filename: filename)
+    private func showToast(filename: String, status: DownloadToastStatus = .started) {
+        let toast = DownloadToast(filename: filename, status: status)
         activeToast = toast
 
         Task { @MainActor in
@@ -190,6 +192,7 @@ final class DownloadManager: NSObject {
 
         let task = session.downloadTask(with: downloads[index].url)
         activeTasks[task] = downloads[index].id
+        showToast(filename: downloads[index].filename)
         task.resume()
         saveDownloadHistory()
     }
@@ -238,7 +241,22 @@ final class DownloadManager: NSObject {
 
 struct DownloadToast: Identifiable, Equatable {
     let id = UUID()
+    let filename: DownloadToastPresentation
+
+    init(filename: String, status: DownloadToastStatus = .started) {
+        self.filename = DownloadToastPresentation(filename: filename, status: status)
+    }
+}
+
+struct DownloadToastPresentation: Equatable {
     let filename: String
+    let status: DownloadToastStatus
+}
+
+enum DownloadToastStatus: String, Equatable {
+    case started
+    case completed
+    case failed
 }
 
 extension DownloadManager: URLSessionDownloadDelegate {
@@ -257,9 +275,11 @@ extension DownloadManager: URLSessionDownloadDelegate {
             downloads[index].state = .completed
             downloads[index].progress = 1.0
             downloads[index].errorMessage = nil
+            showToast(filename: downloads[index].filename, status: .completed)
         } catch {
             downloads[index].state = .failed
             downloads[index].errorMessage = error.localizedDescription
+            showToast(filename: downloads[index].filename, status: .failed)
         }
 
         activeTasks.removeValue(forKey: downloadTask)
@@ -292,6 +312,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
             if let index = downloads.firstIndex(where: { $0.id == id }) {
                 downloads[index].state = .failed
                 downloads[index].errorMessage = error.localizedDescription
+                showToast(filename: downloads[index].filename, status: .failed)
                 saveDownloadHistory()
             }
         }
