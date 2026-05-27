@@ -21,8 +21,23 @@ extension BrowserViewModel {
         hideTabGrid()
     }
 
+    func switchBrowsingMode(_ browsingMode: BrowsingMode) {
+        tabManager.switchBrowsingMode(browsingMode)
+        chromeController.expand()
+        addressBarText = ""
+        clearSuggestions()
+    }
+
     func newTab() {
         tabManager.newTab()
+        chromeController.expand()
+        hideTabGrid()
+        addressBarText = ""
+        isAddressBarFocused = true
+    }
+
+    func newPrivateTab() {
+        tabManager.newPrivateTab()
         chromeController.expand()
         hideTabGrid()
         addressBarText = ""

@@ -85,6 +85,7 @@ struct AddressBar: View {
     private var iconName: String {
         if viewModel.isAddressBarFocused { return "magnifyingglass" }
         if viewModel.activeTab?.navigationError != nil { return "exclamationmark.triangle.fill" }
+        if viewModel.activeTab?.isPrivate == true { return "eye.slash" }
         if viewModel.activeTab?.isSecure == true { return "lock.fill" }
         if viewModel.activeTab?.displayURL != nil { return "globe" }
         return "magnifyingglass"

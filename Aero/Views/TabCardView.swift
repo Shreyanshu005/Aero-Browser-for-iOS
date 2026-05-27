@@ -31,6 +31,16 @@ struct TabCardView: View {
                 .frame(height: 150)
                 .clipped()
 
+                if tab.isPrivate {
+                    Label("Private", systemImage: "eye.slash")
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(6)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onClose()
@@ -44,6 +54,12 @@ struct TabCardView: View {
             }
 
             HStack(spacing: 6) {
+                if tab.isPrivate {
+                    Image(systemName: "eye.slash")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(tab.displayTitle)
                     .font(.caption)
                     .lineLimit(1)

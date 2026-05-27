@@ -64,21 +64,32 @@ final class BrowserViewModel {
 
 
     var activeTab: Tab? { tabManager.activeTab }
+    var activeBrowsingMode: BrowsingMode { tabManager.activeBrowsingMode }
     var chromeMode: BottomChromeMode { chromeController.mode }
 
-    init(settingsStore: BrowserSettingsStoring = BrowserSettingsStore()) {
+    init(
+        tabManager: TabManager = TabManager(),
+        historyStore: HistoryStore = HistoryStore(),
+        favoritesStore: FavoritesStore = FavoritesStore(),
+        downloadManager: DownloadManager = DownloadManager(),
+        contentBlocker: ContentBlocker = ContentBlocker(),
+        settingsStore: BrowserSettingsStoring = BrowserSettingsStore(),
+        compileContentBlocker: Bool = true
+    ) {
         self.settingsStore = settingsStore
         let settings = settingsStore.loadSettings()
         self.searchEngine = settings.searchEngine
         self.contentBlockerEnabled = settings.contentBlockerEnabled
-        self.tabManager = TabManager()
-        self.historyStore = HistoryStore()
-        self.favoritesStore = FavoritesStore()
-        self.downloadManager = DownloadManager()
-        self.contentBlocker = ContentBlocker()
+        self.tabManager = tabManager
+        self.historyStore = historyStore
+        self.favoritesStore = favoritesStore
+        self.downloadManager = downloadManager
+        self.contentBlocker = contentBlocker
 
 
-        compileContentBlockerRules()
+        if compileContentBlocker {
+            compileContentBlockerRules()
+        }
     }
 
     private func saveSettings() {
@@ -124,17 +135,17 @@ final class BrowserViewModel {
             activeTab?.navigationError = nil
         case .didFinishLoading:
             activeTab?.navigationError = nil
-            if let tab = activeTab, let url = tab.url, !url.isInternalPage {
+            if let tab = activeTab, !tab.isPrivate, let url = tab.url, !url.isInternalPage {
                 historyStore.addVisit(url: url, title: tab.title)
             }
-            tabManager.saveSession()
+            saveSessionForActiveStandardTab()
         case .didFailLoading(let error):
             let browserError = BrowserError(error: error, url: activeTab?.displayURL)
             guard browserError.shouldDisplay else { return }
             activeTab?.navigationError = browserError
             chromeController.expand()
         case .didUpdateTitle(_), .didUpdateURL(_):
-            tabManager.saveSession()
+            saveSessionForActiveStandardTab()
         case .didRequestDownload(let pendingDownload):
             requestDownload(pendingDownload)
         case .didRequestJavaScriptDialog(let request):
@@ -152,6 +163,11 @@ final class BrowserViewModel {
         default:
             break
         }
+    }
+
+    private func saveSessionForActiveStandardTab() {
+        guard activeTab?.browsingMode.isSessionRestorable == true else { return }
+        tabManager.saveSession()
     }
 
 

@@ -11,6 +11,7 @@ import WebKit
 @Observable
 final class Tab: Identifiable {
     let id: UUID
+    let browsingMode: BrowsingMode
     var url: URL?
     var title: String
     var navigationError: BrowserError?
@@ -35,6 +36,10 @@ final class Tab: Identifiable {
     let createdAt: Date
     var lastAccessedAt: Date
 
+    var isPrivate: Bool {
+        browsingMode == .privateBrowsing
+    }
+
 
 
     var webView: WKWebView?
@@ -42,10 +47,12 @@ final class Tab: Identifiable {
     init(
         url: URL? = nil,
         title: String = "",
+        browsingMode: BrowsingMode = .standard,
         createdAt: Date = Date(),
         lastAccessedAt: Date = Date()
     ) {
         self.id = UUID()
+        self.browsingMode = browsingMode
         self.url = url
         self.title = title
         self.createdAt = createdAt
@@ -54,8 +61,8 @@ final class Tab: Identifiable {
 
 
     func createWebView(
-        contentBlocker: ContentBlocker,
-        isContentBlockerEnabled: Bool
+        contentBlocker: ContentBlocker = ContentBlocker(),
+        isContentBlockerEnabled: Bool = false
     ) -> WKWebView {
         if let existing = webView {
             return existing
@@ -63,7 +70,8 @@ final class Tab: Identifiable {
 
         let config = BrowserWebViewConfigurationFactory.makeConfiguration(
             contentBlocker: contentBlocker,
-            isContentBlockerEnabled: isContentBlockerEnabled
+            isContentBlockerEnabled: isContentBlockerEnabled,
+            browsingMode: browsingMode
         )
 
         let wv = WKWebView(frame: .zero, configuration: config)

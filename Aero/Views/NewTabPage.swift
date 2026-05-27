@@ -21,7 +21,13 @@ struct NewTabPage: View {
 
 
                     VStack(spacing: AeroSpacing.sm) {
-                        Text("Aero")
+                        if viewModel.activeTab?.isPrivate == true {
+                            Image(systemName: "eye.slash")
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundStyle(Color(UIColor.secondaryLabel))
+                        }
+
+                        Text(viewModel.activeTab?.isPrivate == true ? "Private" : "Aero")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(Color(UIColor.label))
                     }

@@ -51,6 +51,12 @@ struct MenuSheet: View {
 
 
                 Section {
+                    menuButton("eye.slash", "New Private Tab") {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            viewModel.newPrivateTab()
+                        }
+                    }
                     menuButton("clock", "History") {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
