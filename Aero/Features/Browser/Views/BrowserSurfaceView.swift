@@ -169,7 +169,14 @@ struct BrowserSurfaceView: View {
     @ViewBuilder
     private func activePage(safeAreaInsets: EdgeInsets, width: CGFloat) -> some View {
         if let tab = viewModel.activeTab {
-            if tab.url == nil {
+            if let navigationError = tab.navigationError {
+                ErrorPageView(
+                    error: navigationError,
+                    retryAction: viewModel.retryFailedNavigation,
+                    newTabAction: viewModel.newTab
+                )
+                .transition(.opacity)
+            } else if tab.url == nil {
                 NewTabPage(viewModel: viewModel)
                     .transition(.opacity)
             } else {
@@ -183,35 +190,41 @@ struct BrowserSurfaceView: View {
 
                         WebViewRepresentable(
                             tab: targetTab,
+                            contentBlocker: viewModel.contentBlocker,
+                            isContentBlockerEnabled: viewModel.contentBlockerEnabled,
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
                             onNavigationEvent: viewModel.handleNavigationEvent,
                             downloadManager: viewModel.downloadManager
                         )
-                        .id(targetTab.id)
+                        .id("\(targetTab.id.uuidString)-\(viewModel.webViewConfigurationRevision)")
                         .offset(x: incomingStartX + dx)
 
                         WebViewRepresentable(
                             tab: tab,
+                            contentBlocker: viewModel.contentBlocker,
+                            isContentBlockerEnabled: viewModel.contentBlockerEnabled,
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
                             onNavigationEvent: viewModel.handleNavigationEvent,
                             downloadManager: viewModel.downloadManager
                         )
-                        .id(tab.id)
+                        .id("\(tab.id.uuidString)-\(viewModel.webViewConfigurationRevision)")
                         .offset(x: dx)
                     } else {
                         WebViewRepresentable(
                             tab: tab,
+                            contentBlocker: viewModel.contentBlocker,
+                            isContentBlockerEnabled: viewModel.contentBlockerEnabled,
                             chromeMode: viewModel.chromeMode,
                             isAddressBarFocused: viewModel.isAddressBarFocused,
                             safeAreaInsets: safeAreaInsets,
                             onNavigationEvent: viewModel.handleNavigationEvent,
                             downloadManager: viewModel.downloadManager
                         )
-                        .id(tab.id)
+                        .id("\(tab.id.uuidString)-\(viewModel.webViewConfigurationRevision)")
                         .transition(.opacity)
                     }
                 }

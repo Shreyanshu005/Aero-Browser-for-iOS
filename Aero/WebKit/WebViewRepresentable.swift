@@ -3,6 +3,8 @@ import WebKit
 
 struct WebViewRepresentable: UIViewRepresentable {
     let tab: Tab
+    let contentBlocker: ContentBlocker
+    let isContentBlockerEnabled: Bool
     let chromeMode: BottomChromeMode
     let isAddressBarFocused: Bool
     let safeAreaInsets: EdgeInsets
@@ -10,7 +12,10 @@ struct WebViewRepresentable: UIViewRepresentable {
     let downloadManager: DownloadManager
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = tab.createWebView()
+        let webView = tab.createWebView(
+            contentBlocker: contentBlocker,
+            isContentBlockerEnabled: isContentBlockerEnabled
+        )
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
 
@@ -102,5 +107,7 @@ enum NavigationEvent {
     case didUpdateURL(URL?)
     case didUpdateCanGoBack(Bool)
     case didUpdateCanGoForward(Bool)
+    case didRequestDownload(PendingDownload)
+    case didRequestJavaScriptDialog(JavaScriptDialogRequest)
     case didScroll(WebScrollMetrics)
 }

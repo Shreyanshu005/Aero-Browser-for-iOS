@@ -14,7 +14,7 @@ struct TabGridView: View {
     @State private var isVerticalInteracting = false
     @State private var isDismissing = false
 
-    private var tabs: [Tab] { viewModel.tabManager.tabs }
+    private var tabs: [Tab] { viewModel.tabManager.tabs(in: viewModel.activeBrowsingMode) }
 
     private enum DragAxis { case undecided, horizontal, vertical }
 
@@ -122,7 +122,7 @@ struct TabGridView: View {
             .simultaneousGesture(horizontalPagingGesture(maxOff: maxOff))
             .onAppear {
                 if let activeID = viewModel.activeTab?.id,
-                   let i = viewModel.tabManager.tabs.firstIndex(where: { $0.id == activeID }) {
+                   let i = tabs.firstIndex(where: { $0.id == activeID }) {
                     offset = CGFloat(i) * cardStep
                 } else {
                     offset = 0
@@ -176,25 +176,59 @@ struct TabGridView: View {
     }
 
     private var topControls: some View {
-        HStack {
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.closeAllTabs()
-            } label: {
-                Text("Clear All")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .environment(\.colorScheme, .dark)
-            }
-            .disabled(viewModel.tabManager.tabs.count <= 1)
-            .opacity(viewModel.tabManager.tabs.count <= 1 ? 0.4 : 1.0)
+        VStack(spacing: 12) {
+            HStack {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    viewModel.closeAllTabs()
+                } label: {
+                    Text("Clear All")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .environment(\.colorScheme, .dark)
+                }
+                .disabled(tabs.count <= 1)
+                .opacity(tabs.count <= 1 ? 0.4 : 1.0)
 
-            Spacer()
+                Spacer()
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    viewModel.reopenLastClosedTab()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .environment(\.colorScheme, .dark)
+                }
+                .disabled(!viewModel.canReopenLastClosedTab)
+                .opacity(viewModel.canReopenLastClosedTab ? 1 : 0.4)
+            }
+
+            Picker("Browsing Mode", selection: browsingModeSelection) {
+                ForEach(BrowsingMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 9))
+            .environment(\.colorScheme, .dark)
         }
         .padding(.horizontal, 28)
+    }
+
+    private var browsingModeSelection: Binding<BrowsingMode> {
+        Binding {
+            viewModel.activeBrowsingMode
+        } set: { mode in
+            viewModel.switchBrowsingMode(mode)
+        }
     }
 
     private func horizontalPagingGesture(maxOff: CGFloat) -> some Gesture {
@@ -297,9 +331,9 @@ struct TabGridView: View {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            if let removedIndex = viewModel.tabManager.tabs.firstIndex(where: { $0.id == tab.id }) {
+            if let removedIndex = tabs.firstIndex(where: { $0.id == tab.id }) {
                 let currentFrontIndex = Int((offset / cardStep).rounded())
-                    .clamped(to: 0...max(viewModel.tabManager.tabs.count - 1, 0))
+                    .clamped(to: 0...max(tabs.count - 1, 0))
                 viewModel.closeTab(tab)
                 if removedIndex < currentFrontIndex {
                     offset = max(0, offset - cardStep)
@@ -308,7 +342,7 @@ struct TabGridView: View {
                 viewModel.closeTab(tab)
             }
 
-            let maxOff = max(0, CGFloat(max(viewModel.tabManager.tabs.count - 1, 0)) * cardStep)
+            let maxOff = max(0, CGFloat(max(tabs.count - 1, 0)) * cardStep)
             offset = offset.clamped(to: 0...maxOff)
             dragStart = offset
 
@@ -317,7 +351,7 @@ struct TabGridView: View {
             isVerticalInteracting = false
             isDismissing = false
 
-            if viewModel.tabManager.tabs.isEmpty { viewModel.hideTabGrid() }
+            if tabs.isEmpty { viewModel.hideTabGrid() }
         }
     }
 }

@@ -45,6 +45,11 @@ struct TabCardView: View {
                     .foregroundStyle(.white.opacity(0.4))
                     .frame(width: 18, height: 18)
             }
+            if tab.isPrivate {
+                Image(systemName: "eye.slash")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
             Text(tab.displayTitle.isEmpty ? "New Tab" : tab.displayTitle)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.8))
@@ -75,7 +80,7 @@ struct TabCardView: View {
                     Image(systemName: "safari")
                         .font(.system(size: 42, weight: .ultraLight))
                         .foregroundStyle(.white.opacity(0.18))
-                    Text(tab.url?.host ?? "New Tab")
+                    Text(tab.displayURL?.host ?? "New Tab")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.25))
                 }

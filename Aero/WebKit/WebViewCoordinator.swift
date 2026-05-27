@@ -13,20 +13,28 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
     let tab: Tab
     let onNavigationEvent: (NavigationEvent) -> Void
     let downloadManager: DownloadManager
+    private let externalURLPolicy: ExternalURLPolicy
+    private let externalURLOpener: ExternalURLOpening
     private var observations: [NSKeyValueObservation] = []
     private weak var refreshControl: UIRefreshControl?
     private var downloadMap: [ObjectIdentifier: UUID] = [:]
     private var downloadProgressObservers: [ObjectIdentifier: NSKeyValueObservation] = [:]
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    private var mainFrameNavigationHost: String?
+    private var latestServerCertificateSummary: CertificateSummary?
 
     init(
         tab: Tab,
         onNavigationEvent: @escaping (NavigationEvent) -> Void,
-        downloadManager: DownloadManager
+        downloadManager: DownloadManager,
+        externalURLPolicy: ExternalURLPolicy = ExternalURLPolicy(),
+        externalURLOpener: ExternalURLOpening = UIApplicationExternalURLOpener()
     ) {
         self.tab = tab
         self.onNavigationEvent = onNavigationEvent
         self.downloadManager = downloadManager
+        self.externalURLPolicy = externalURLPolicy
+        self.externalURLOpener = externalURLOpener
         super.init()
     }
 
@@ -73,9 +81,13 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         observations.append(
             webView.observe(\.url, options: .new) { [weak self] wv, _ in
                 DispatchQueue.main.async {
-                    self?.tab.url = wv.url
-                    self?.tab.isSecure = wv.url?.isSecure ?? false
-                    self?.onNavigationEvent(.didUpdateURL(wv.url))
+                    guard let self else { return }
+                    self.tab.updatePageStatus(url: wv.url, isSecure: wv.url?.isSecure ?? false)
+                    if let certificateSummary = self.latestServerCertificateSummary,
+                       certificateSummary.matches(host: wv.url?.host) {
+                        self.tab.updateServerCertificateSummary(certificateSummary)
+                    }
+                    self.onNavigationEvent(.didUpdateURL(wv.url))
                 }
             }
         )
@@ -238,16 +250,65 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
     func webView(
         _ webView: WKWebView,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        let host = challenge.protectionSpace.host
+        if shouldCaptureServerTrust(for: host, webView: webView),
+           let certificateSummary = CertificateSummaryParser.summary(from: serverTrust, host: host) {
+            latestServerCertificateSummary = certificateSummary
+            tab.updateServerCertificateSummary(certificateSummary)
+        }
+
+        completionHandler(.performDefaultHandling, nil)
+    }
+
+    func webView(
+        _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        let isMainFrameNavigation = navigationAction.targetFrame?.isMainFrame ?? true
+        if isMainFrameNavigation {
+            prepareForMainFrameNavigation(to: navigationAction.request.url)
+        }
+
         if #available(iOS 14.5, *) {
-            if navigationAction.shouldPerformDownload {
-                decisionHandler(.download)
+            if navigationAction.shouldPerformDownload,
+               let url = navigationAction.request.url {
+                onNavigationEvent(
+                    .didRequestDownload(
+                        PendingDownload(
+                            url: url,
+                            suggestedFilename: nil,
+                            sourceHost: url.displayHost ?? url.host ?? url.absoluteString,
+                            mimeType: nil,
+                            expectedByteCount: nil
+                        )
+                    )
+                )
+                decisionHandler(.cancel)
                 return
             }
         }
-        decisionHandler(.allow)
+
+        switch externalURLPolicy.decision(for: navigationAction.request.url) {
+        case .allowInWebView:
+            decisionHandler(.allow)
+        case .openExternally(let url):
+            if shouldOpenExternalURL(for: navigationAction) {
+                externalURLOpener.open(url)
+            }
+            decisionHandler(.cancel)
+        case .cancel:
+            decisionHandler(.cancel)
+        }
     }
 
     func webView(
@@ -255,36 +316,26 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         decidePolicyFor navigationResponse: WKNavigationResponse,
         decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
     ) {
-        guard let url = navigationResponse.response.url else {
+        guard shouldDownload(navigationResponse),
+              let url = navigationResponse.response.url else {
             decisionHandler(.allow)
             return
         }
 
-        if let http = navigationResponse.response as? HTTPURLResponse,
-           let disposition = http.value(forHTTPHeaderField: "Content-Disposition")?.lowercased(),
-           disposition.contains("attachment") {
-            if #available(iOS 14.5, *) {
-                decisionHandler(.download)
-                return
-            } else {
-                downloadManager.startDownload(url: url, suggestedFilename: http.suggestedFilename)
-                decisionHandler(.cancel)
-                return
-            }
-        }
-
-        if navigationResponse.canShowMIMEType == false {
-            if #available(iOS 14.5, *) {
-                decisionHandler(.download)
-                return
-            } else {
-                downloadManager.startDownload(url: url, suggestedFilename: navigationResponse.response.suggestedFilename)
-                decisionHandler(.cancel)
-                return
-            }
-        }
-
-        decisionHandler(.allow)
+        let response = navigationResponse.response
+        let expectedLength = response.expectedContentLength > 0 ? response.expectedContentLength : nil
+        onNavigationEvent(
+            .didRequestDownload(
+                PendingDownload(
+                    url: url,
+                    suggestedFilename: response.suggestedFilename,
+                    sourceHost: url.displayHost ?? url.host ?? url.absoluteString,
+                    mimeType: response.mimeType,
+                    expectedByteCount: expectedLength
+                )
+            )
+        )
+        decisionHandler(.cancel)
     }
 
     // MARK: - WKDownload bridge
@@ -382,10 +433,84 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
         for navigationAction: WKNavigationAction,
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
-        if navigationAction.targetFrame == nil || !(navigationAction.targetFrame!.isMainFrame) {
-            webView.load(navigationAction.request)
+        if navigationAction.targetFrame?.isMainFrame != true {
+            tab.recordPopupAttempt()
+            switch externalURLPolicy.decision(for: navigationAction.request.url) {
+            case .allowInWebView:
+                webView.load(navigationAction.request)
+            case .openExternally(let url):
+                externalURLOpener.open(url)
+            case .cancel:
+                break
+            }
         }
         return nil
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptAlertPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping () -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .alert,
+                    message: message,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .alert(completionHandler)
+                )
+            )
+        )
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptConfirmPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .confirm,
+                    message: message,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .confirm(completionHandler)
+                )
+            )
+        )
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptTextInputPanelWithPrompt prompt: String,
+        defaultText: String?,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (String?) -> Void
+    ) {
+        onNavigationEvent(
+            .didRequestJavaScriptDialog(
+                JavaScriptDialogRequest(
+                    kind: .prompt(defaultText: defaultText),
+                    message: prompt,
+                    sourceHost: javascriptDialogSourceHost(frame: frame, webView: webView),
+                    completion: .prompt(completionHandler)
+                )
+            )
+        )
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        tab.recordMediaCaptureRequest(type.siteMediaCaptureType)
+        decisionHandler(.prompt)
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -395,5 +520,71 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
             viewportHeight: scrollView.bounds.height
         )
         onNavigationEvent(.didScroll(metrics))
+    }
+
+    private func shouldDownload(_ navigationResponse: WKNavigationResponse) -> Bool {
+        if navigationResponse.canShowMIMEType == false {
+            return true
+        }
+
+        guard let httpResponse = navigationResponse.response as? HTTPURLResponse else {
+            return false
+        }
+
+        let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        return disposition.localizedCaseInsensitiveContains("attachment")
+    }
+
+    private func shouldOpenExternalURL(for navigationAction: WKNavigationAction) -> Bool {
+        navigationAction.targetFrame?.isMainFrame != false
+    }
+
+    private func javascriptDialogSourceHost(frame: WKFrameInfo, webView: WKWebView) -> String {
+        let url = frame.request.url ?? webView.url
+        return url?.displayHost ?? "This Page"
+    }
+
+    private func prepareForMainFrameNavigation(to url: URL?) {
+        mainFrameNavigationHost = url?.host
+
+        if let latestServerCertificateSummary,
+           (!latestServerCertificateSummary.matches(host: url?.host) || url?.scheme?.lowercased() != "https") {
+            self.latestServerCertificateSummary = nil
+            tab.updateServerCertificateSummary(nil)
+        }
+    }
+
+    private func shouldCaptureServerTrust(for host: String, webView: WKWebView) -> Bool {
+        guard let normalizedHost = normalizedSecurityHost(host) else { return false }
+
+        let candidateHosts = [
+            mainFrameNavigationHost,
+            webView.url?.host,
+            tab.url?.host,
+        ]
+
+        return candidateHosts.contains { candidate in
+            normalizedSecurityHost(candidate) == normalizedHost
+        }
+    }
+
+    private func normalizedSecurityHost(_ host: String?) -> String? {
+        guard let host, !host.isEmpty else { return nil }
+        return host.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+    }
+}
+
+private extension WKMediaCaptureType {
+    var siteMediaCaptureType: SiteMediaCaptureType {
+        switch self {
+        case .camera:
+            return .camera
+        case .microphone:
+            return .microphone
+        case .cameraAndMicrophone:
+            return .cameraAndMicrophone
+        @unknown default:
+            return .cameraAndMicrophone
+        }
     }
 }
