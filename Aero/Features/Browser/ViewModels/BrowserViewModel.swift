@@ -26,6 +26,10 @@ final class BrowserViewModel {
 
     @ObservationIgnored
     private let settingsStore: BrowserSettingsStoring
+    @ObservationIgnored
+    var agentRunEngineStorage: AgentRunEngine?
+    @ObservationIgnored
+    var agentBrowserToolsStorage: LiveAgentBrowserTools?
 
     var isShowingTabGrid: Bool = false
     var isAddressBarFocused: Bool = false

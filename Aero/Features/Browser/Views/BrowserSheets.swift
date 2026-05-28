@@ -39,6 +39,8 @@ struct BrowserSheets: ViewModifier {
             }
             .sheet(isPresented: $viewModel.showAgentPanel) {
                 AgentChatPanelView(
+                    viewModel: viewModel,
+                    engine: viewModel.agentRunEngine,
                     pageTitle: activePageTitle,
                     pageSubtitle: activePageSubtitle
                 )

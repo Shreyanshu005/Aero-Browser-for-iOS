@@ -106,6 +106,41 @@ final class AgentRunEngine {
         session = AgentRunSession()
     }
 
+    func recordApprovalRequested(_ request: AgentApprovalRequest) {
+        guard session.status.isActive else { return }
+
+        session.status = .waitingForApproval
+        session.pendingApproval = request
+        appendStep(
+            AgentRunStep(
+                kind: .approval,
+                status: .waitingForApproval,
+                title: request.title,
+                detail: request.detail
+            )
+        )
+    }
+
+    func recordApprovalResolved(_ request: AgentApprovalRequest, _ decision: AgentApprovalDecision) {
+        guard session.status.isActive || session.pendingApproval?.id == request.id else { return }
+
+        if session.pendingApproval?.id == request.id {
+            session.pendingApproval = nil
+        }
+        if session.status == .waitingForApproval {
+            session.status = .running
+        }
+        appendStep(
+            AgentRunStep(
+                kind: .approval,
+                status: decision == .approved ? .completed : .failed,
+                title: decision == .approved ? "Approval granted" : "Approval denied",
+                detail: request.title,
+                completedAt: Date()
+            )
+        )
+    }
+
     private func handle(_ event: AgentToolLoopEvent, runID: UUID) {
         guard activeRunID == runID else { return }
 
@@ -115,32 +150,9 @@ final class AgentRunEngine {
         case .stepUpdated(let id, let status, let title, let detail):
             updateStep(id: id, status: status, title: title, detail: detail)
         case .approvalRequested(let request):
-            session.status = .waitingForApproval
-            session.pendingApproval = request
-            appendStep(
-                AgentRunStep(
-                    kind: .approval,
-                    status: .waitingForApproval,
-                    title: request.title,
-                    detail: request.detail
-                )
-            )
+            recordApprovalRequested(request)
         case .approvalResolved(let request, let decision):
-            if session.pendingApproval?.id == request.id {
-                session.pendingApproval = nil
-            }
-            if session.status == .waitingForApproval {
-                session.status = .running
-            }
-            appendStep(
-                AgentRunStep(
-                    kind: .approval,
-                    status: decision == .approved ? .completed : .failed,
-                    title: decision == .approved ? "Approval granted" : "Approval denied",
-                    detail: request.title,
-                    completedAt: Date()
-                )
-            )
+            recordApprovalResolved(request, decision)
         }
     }
 
