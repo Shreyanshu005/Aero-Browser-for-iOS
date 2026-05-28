@@ -70,17 +70,24 @@ struct AgentPageElement: Identifiable, Equatable {
 
 struct AgentBrowserToolResult: Equatable {
     var summary: String
+    var extraction: AgentExtractionBundle?
 
-    init(summary: String) {
+    init(summary: String, extraction: AgentExtractionBundle? = nil) {
         self.summary = summary
+        self.extraction = extraction
     }
 }
 
 struct AgentDataExtractionRequest: Equatable {
     var prompt: String
+    var kinds: Set<AgentExtractionKind>
 
-    init(prompt: String) {
+    init(
+        prompt: String,
+        kinds: Set<AgentExtractionKind> = Set(AgentExtractionKind.allCases)
+    ) {
         self.prompt = prompt
+        self.kinds = kinds
     }
 }
 

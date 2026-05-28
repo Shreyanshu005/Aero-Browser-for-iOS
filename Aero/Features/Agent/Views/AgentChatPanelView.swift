@@ -2,19 +2,27 @@ import SwiftUI
 import UIKit
 
 struct AgentChatPanelView: View {
-    let pageTitle: String
-    let pageSubtitle: String
+    @Bindable var viewModel: BrowserViewModel
 
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
+    @State private var runEngine: AgentRunEngine
     @State private var draft = ""
-    @State private var messages = AgentPanelSampleData.initialMessages
-    @State private var runLog = AgentPanelSampleData.initialRunLog
-    @State private var runState: AgentPanelRunState = .approvalNeeded
+    @State private var messages: [AgentPanelMessage] = []
 
     private let promptColumns = [
         GridItem(.adaptive(minimum: 148), spacing: AeroSpacing.sm, alignment: .top)
     ]
+
+    init(viewModel: BrowserViewModel) {
+        self.viewModel = viewModel
+        _runEngine = State(
+            initialValue: AgentRunEngine(
+                toolLoopRunner: LiveAgentToolLoopRunner(searchEngine: viewModel.searchEngine),
+                browserTools: viewModel
+            )
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,6 +58,12 @@ struct AgentChatPanelView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("agent.chat.panel")
+        .onChange(of: runEngine.session.finalAnswer) { _, answer in
+            appendAgentMessage(answer)
+        }
+        .onChange(of: runEngine.session.error?.message) { _, message in
+            appendAgentMessage(message.map { "Run failed: \($0)" })
+        }
     }
 
     private var header: some View {
@@ -123,13 +137,13 @@ struct AgentChatPanelView: View {
                     .background(.thinMaterial, in: Circle())
 
                 VStack(alignment: .leading, spacing: AeroSpacing.xs) {
-                    Text(pageTitle)
+                    Text(activePageTitle)
                         .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(AeroColor.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
-                    Text(pageSubtitle)
+                    Text(activePageSubtitle)
                         .font(AeroFont.caption)
                         .foregroundStyle(AeroColor.textSecondary)
                         .lineLimit(1)
@@ -214,29 +228,29 @@ struct AgentChatPanelView: View {
 
             AeroGlassPanel(style: .panel, cornerRadius: AeroRadius.lg) {
                 VStack(spacing: 0) {
-                    if runLog.isEmpty {
+                    if runLogItems.isEmpty {
                         Text("Waiting for a task. Timeline steps will appear here.")
                             .font(AeroFont.caption)
                             .foregroundStyle(AeroColor.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(AeroSpacing.md)
                     } else {
-                        ForEach(Array(runLog.enumerated()), id: \.element.id) { index, item in
+                        ForEach(Array(runLogItems.enumerated()), id: \.element.id) { index, item in
                             AgentRunTimelineRow(
                                 item: item,
                                 isFirst: index == 0,
-                                isLast: index == runLog.count - 1
+                                isLast: index == runLogItems.count - 1
                             )
                         }
                     }
 
                     if runState == .approvalNeeded {
                         approvalActions
-                            .padding(.top, runLog.isEmpty ? 0 : AeroSpacing.sm)
+                            .padding(.top, runLogItems.isEmpty ? 0 : AeroSpacing.sm)
                             .padding([.horizontal, .bottom], AeroSpacing.md)
                     } else if runState == .failed {
                         retryActions
-                            .padding(.top, runLog.isEmpty ? 0 : AeroSpacing.sm)
+                            .padding(.top, runLogItems.isEmpty ? 0 : AeroSpacing.sm)
                             .padding([.horizontal, .bottom], AeroSpacing.md)
                     }
                 }
@@ -365,8 +379,8 @@ struct AgentChatPanelView: View {
                     .fill(Color(UIColor.systemBackground).opacity(0.34))
                     .browserLiquidGlassBackground(in: Circle())
             }
-            .disabled(runState == .ready || runState == .stopped)
-            .opacity(runState == .ready || runState == .stopped ? 0.45 : 1)
+            .disabled(!runEngine.session.status.isActive)
+            .opacity(runEngine.session.status.isActive ? 1 : 0.45)
             .accessibilityLabel("Stop")
             .accessibilityIdentifier("agent.chat.stop")
 
@@ -403,6 +417,35 @@ struct AgentChatPanelView: View {
 
     private var canSend: Bool {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var activePageTitle: String {
+        viewModel.activeTab?.displayTitle ?? "New Tab"
+    }
+
+    private var activePageSubtitle: String {
+        viewModel.activeTab?.displayURL?.displayHost ?? "Ready for browsing tasks"
+    }
+
+    private var runState: AgentPanelRunState {
+        switch runEngine.session.status {
+        case .idle:
+            return .ready
+        case .running:
+            return .running
+        case .waitingForApproval:
+            return .approvalNeeded
+        case .stopped:
+            return .stopped
+        case .completed:
+            return .completed
+        case .failed:
+            return .failed
+        }
+    }
+
+    private var runLogItems: [AgentRunLogItem] {
+        runEngine.session.steps.map(AgentRunLogItem.init)
     }
 
     private var statusTitle: String {
@@ -471,92 +514,96 @@ struct AgentChatPanelView: View {
                 timestampLabel: "Now"
             )
         )
-        messages.append(
-            AgentPanelMessage(
-                role: .agent,
-                text: "I will organize the browsing steps, ask before sensitive actions, and keep progress visible here.",
-                timestampLabel: "Now"
-            )
-        )
-        runLog = [
-            AgentRunLogItem(
-                phase: .observePage,
-                status: .completed,
-                title: "Task captured",
-                detail: trimmedDraft,
-                metadataLabel: "Now"
-            ),
-            AgentRunLogItem(
-                phase: .selectedAction,
-                status: .running,
-                title: "Planning steps",
-                detail: "Preparing page review and tab checks."
-            ),
-            AgentRunLogItem(
-                phase: .approvalNeeded,
-                status: .approvalNeeded,
-                title: "Approval needed",
-                detail: "Allow access to the current page before continuing."
-            ),
-        ]
-        runState = .approvalNeeded
+        runEngine.start(prompt: trimmedDraft)
         draft = ""
     }
 
     private func stopRun() {
-        runState = .stopped
-        runLog.append(
-            AgentRunLogItem(
-                phase: .result,
-                status: .stopped,
-                title: "Run stopped",
-                detail: "No more steps will be taken for this task."
-            )
-        )
+        runEngine.stop()
     }
 
     private func clearConversation() {
         draft = ""
         messages = []
-        runLog = []
-        runState = .ready
+        runEngine.clear()
     }
 
     private func approveAccess() {
-        runState = .running
-        runLog.append(
-            AgentRunLogItem(
-                phase: .result,
-                status: .completed,
-                title: "Access approved",
-                detail: "Continuing with the current page."
-            )
-        )
+        appendAgentMessage("Approval handling is not available for this deterministic run yet.")
     }
 
     private func declineApproval() {
-        runState = .stopped
-        runLog.append(
-            AgentRunLogItem(
-                phase: .result,
-                status: .stopped,
-                title: "Approval skipped",
-                detail: "The current task is paused."
-            )
-        )
+        runEngine.stop()
     }
 
     private func retryRun() {
-        runState = .running
-        runLog.append(
-            AgentRunLogItem(
-                phase: .retry,
-                status: .running,
-                title: "Retrying step",
-                detail: "Rechecking the page before trying the action again.",
-                metadataLabel: "Now"
+        guard !runEngine.session.prompt.isEmpty else { return }
+        runEngine.start(prompt: runEngine.session.prompt)
+    }
+
+    private func appendAgentMessage(_ text: String?) {
+        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+        guard messages.last?.role != .agent || messages.last?.text != text else { return }
+
+        messages.append(
+            AgentPanelMessage(
+                role: .agent,
+                text: text,
+                timestampLabel: "Now"
             )
         )
+    }
+}
+
+private extension AgentRunLogItem {
+    init(_ step: AgentRunStep) {
+        self.init(
+            id: step.id,
+            phase: AgentRunLogItem.phase(for: step),
+            status: AgentRunLogItem.status(for: step.status),
+            title: step.title,
+            detail: step.detail,
+            metadataLabel: step.completedAt == nil ? nil : "Done"
+        )
+    }
+
+    static func phase(for step: AgentRunStep) -> Phase {
+        switch step.kind {
+        case .approval:
+            return .approvalNeeded
+        case .error:
+            return .error
+        case .finalAnswer:
+            return .finalAnswer
+        case .run:
+            return .result
+        case .browserTool:
+            let title = step.title.lowercased()
+            if title.contains("observe") || title.contains("wait") || title.contains("extract") {
+                return .observePage
+            }
+            if title.contains("scroll") {
+                return .retry
+            }
+            return .selectedAction
+        }
+    }
+
+    static func status(for status: AgentRunStepStatus) -> Status {
+        switch status {
+        case .queued:
+            return .queued
+        case .running:
+            return .running
+        case .waitingForApproval:
+            return .approvalNeeded
+        case .completed:
+            return .completed
+        case .failed:
+            return .failed
+        case .stopped:
+            return .stopped
+        }
     }
 }
 

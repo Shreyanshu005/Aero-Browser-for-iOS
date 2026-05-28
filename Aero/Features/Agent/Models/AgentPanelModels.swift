@@ -87,51 +87,8 @@ struct AgentRunLogItem: Identifiable, Equatable {
 enum AgentPanelSampleData {
     static let suggestedPrompts: [AgentPromptChip] = [
         AgentPromptChip(title: "Summarize this page", systemImage: "doc.text.magnifyingglass"),
+        AgentPromptChip(title: "Tell me price of TV from Flipkart", systemImage: "cart"),
         AgentPromptChip(title: "Find latest post by Elon on X", systemImage: "bolt.horizontal.circle"),
-        AgentPromptChip(title: "Compare open tabs", systemImage: "square.grid.2x2"),
         AgentPromptChip(title: "Extract links from this page", systemImage: "link"),
-    ]
-
-    static let initialMessages: [AgentPanelMessage] = [
-        AgentPanelMessage(
-            role: .user,
-            text: "Compare the active tab with the research tabs and call out the main differences.",
-            timestampLabel: "2m"
-        ),
-        AgentPanelMessage(
-            role: .agent,
-            text: "I can line up the open tabs, identify the main claims, and keep the final notes in this thread.",
-            timestampLabel: "1m"
-        ),
-    ]
-
-    static let initialRunLog: [AgentRunLogItem] = [
-        AgentRunLogItem(
-            phase: .observePage,
-            status: .completed,
-            title: "Observed active page",
-            detail: "Read the visible page title, URL, and open research context.",
-            metadataLabel: "2m"
-        ),
-        AgentRunLogItem(
-            phase: .selectedAction,
-            status: .completed,
-            title: "Selected action",
-            detail: "Compare the active tab against the research tabs.",
-            metadataLabel: "1m"
-        ),
-        AgentRunLogItem(
-            phase: .approvalNeeded,
-            status: .approvalNeeded,
-            title: "Approval needed",
-            detail: "Allow access to the current page before continuing.",
-            metadataLabel: "Now"
-        ),
-        AgentRunLogItem(
-            phase: .finalAnswer,
-            status: .queued,
-            title: "Final answer",
-            detail: "Findings will appear in the transcript after approval."
-        ),
     ]
 }
