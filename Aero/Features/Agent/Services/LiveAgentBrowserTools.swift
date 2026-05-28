@@ -2,25 +2,27 @@ import Foundation
 
 @MainActor
 final class LiveAgentBrowserTools: AgentBrowserTooling {
-    private weak var browserViewModel: BrowserViewModel?
-    private let observePageTool: ObservePageTool
+    var onApprovalRequested: ((AgentApprovalRequest) -> Void)?
+    var onApprovalResolved: ((AgentApprovalRequest, AgentApprovalDecision) -> Void)?
+
+    private weak var target: BrowserActionTarget?
     private let actionExecutor: BrowserActionExecutor
     private let extractionService: AgentExtractionService
+    private var approvalContinuations: [UUID: CheckedContinuation<AgentApprovalDecision, Never>] = [:]
+    private var queuedApprovalDecisions: [UUID: AgentApprovalDecision] = [:]
 
     init(
-        browserViewModel: BrowserViewModel,
-        observePageTool: ObservePageTool = ObservePageTool(),
+        target: BrowserActionTarget,
         actionExecutor: BrowserActionExecutor = BrowserActionExecutor(),
         extractionService: AgentExtractionService = AgentExtractionService()
     ) {
-        self.browserViewModel = browserViewModel
-        self.observePageTool = observePageTool
+        self.target = target
         self.actionExecutor = actionExecutor
         self.extractionService = extractionService
     }
 
     func observePage() async throws -> AgentPageObservation {
-        try await observeCurrentPage().agentPageObservation
+        try await observeRawPage().agentPageObservation
     }
 
     func openURL(_ url: URL) async throws -> AgentBrowserToolResult {
@@ -75,7 +77,7 @@ final class LiveAgentBrowserTools: AgentBrowserTooling {
     }
 
     func extractData(_ request: AgentDataExtractionRequest) async throws -> AgentBrowserToolResult {
-        let observation = try await observeCurrentPage()
+        let observation = try await observeRawPage()
         let extractionInput = observation.agentExtractionInput
         let bundle = extractionService.extract(request.kinds, from: extractionInput)
 
@@ -88,24 +90,65 @@ final class LiveAgentBrowserTools: AgentBrowserTooling {
     }
 
     func requestApproval(_ request: AgentApprovalRequest) async -> AgentApprovalDecision {
-        guard let browserViewModel else { return .denied }
-        return await browserViewModel.requestAgentBrowserToolApproval(request)
+        if let decision = queuedApprovalDecisions.removeValue(forKey: request.id) {
+            return decision
+        }
+
+        return await withCheckedContinuation { continuation in
+            approvalContinuations[request.id] = continuation
+        }
     }
 
-    private func observeCurrentPage() async throws -> PageObservation {
-        let browserViewModel = try requireBrowserViewModel()
-        return try await observePageTool.observe(webView: browserViewModel.activeTab?.webView)
+    @discardableResult
+    func resolveApproval(id: UUID, decision: AgentApprovalDecision) -> Bool {
+        if let continuation = approvalContinuations.removeValue(forKey: id) {
+            continuation.resume(returning: decision)
+            return true
+        }
+
+        queuedApprovalDecisions[id] = decision
+        return false
+    }
+
+    func cancelPendingApprovals() {
+        let continuations = approvalContinuations
+        approvalContinuations.removeAll()
+        queuedApprovalDecisions.removeAll()
+
+        for continuation in continuations.values {
+            continuation.resume(returning: .denied)
+        }
+    }
+
+    private func observeRawPage() async throws -> PageObservation {
+        guard let target else {
+            throw LiveAgentBrowserToolsError.browserUnavailable
+        }
+
+        guard let json = try await target.browserActionEvaluateJavaScript(PageObservationService.observationJavaScript) as? String else {
+            throw PageObservationServiceError.invalidJavaScriptResult
+        }
+
+        return try PageObservationService.decodeObservation(from: json)
     }
 
     private func execute(_ request: BrowserActionRequest) async throws -> AgentBrowserToolResult {
-        let browserViewModel = try requireBrowserViewModel()
-        let result = await actionExecutor.execute(request, in: browserViewModel)
+        guard let target else {
+            throw LiveAgentBrowserToolsError.browserUnavailable
+        }
+
+        var activeRequest = request
+        var result = await actionExecutor.execute(activeRequest, in: target)
+
         guard result.status == .approvalRequired else {
             return toolResult(from: result)
         }
 
-        let approvalRequest = approvalRequest(for: result)
-        let decision = await browserViewModel.requestAgentBrowserToolApproval(approvalRequest)
+        let approval = approvalRequest(for: result)
+        onApprovalRequested?(approval)
+        let decision = await requestApproval(approval)
+        onApprovalResolved?(approval, decision)
+
         guard decision == .approved else {
             return AgentBrowserToolResult(
                 summary: "Approval denied. \(result.message)",
@@ -114,17 +157,9 @@ final class LiveAgentBrowserTools: AgentBrowserTooling {
             )
         }
 
-        var approvedRequest = request
-        approvedRequest.userApproved = true
-        let approvedResult = await actionExecutor.execute(approvedRequest, in: browserViewModel)
-        return toolResult(from: approvedResult, approvalDecision: decision)
-    }
-
-    private func requireBrowserViewModel() throws -> BrowserViewModel {
-        guard let browserViewModel else {
-            throw LiveAgentBrowserToolsError.browserUnavailable
-        }
-        return browserViewModel
+        activeRequest.userApproved = true
+        result = await actionExecutor.execute(activeRequest, in: target)
+        return toolResult(from: result, approvalDecision: decision)
     }
 
     private func toolResult(
@@ -401,7 +436,7 @@ private extension PageObservedElement {
     var agentPageElement: AgentPageElement {
         AgentPageElement(
             id: targetID,
-            role: kind.rawValue,
+            role: role.flatMap { $0.nonEmptyTrimmed } ?? kind.rawValue,
             label: label.nonEmptyTrimmed ?? text.flatMap { $0.nonEmptyTrimmed } ?? kind.rawValue,
             text: text ?? ""
         )
@@ -410,12 +445,14 @@ private extension PageObservedElement {
     var agentExtractionElement: AgentExtractionElement {
         AgentExtractionElement(
             id: targetID,
-            tagName: kind.extractionTagName,
+            tagName: tagName.flatMap { $0.nonEmptyTrimmed } ?? kind.extractionTagName,
             text: text ?? label,
             attributes: compactedAttributes([
                 BrowserActionJavaScript.elementIDAttribute: targetID,
                 "data-aero-target-path": targetPath,
-                "role": kind.rawValue,
+                "role": role ?? kind.rawValue,
+                "class": className,
+                "data-testid": dataTestID,
                 "aria-label": label,
                 "disabled": isEnabled ? nil : "true",
             ])

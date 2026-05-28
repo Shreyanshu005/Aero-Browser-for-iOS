@@ -2,27 +2,18 @@ import SwiftUI
 import UIKit
 
 struct AgentChatPanelView: View {
-    @Bindable var viewModel: BrowserViewModel
+    let viewModel: BrowserViewModel
+    let engine: AgentRunEngine
+    let pageTitle: String
+    let pageSubtitle: String
 
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
-    @State private var runEngine: AgentRunEngine
     @State private var draft = ""
-    @State private var messages: [AgentPanelMessage] = []
 
     private let promptColumns = [
         GridItem(.adaptive(minimum: 148), spacing: AeroSpacing.sm, alignment: .top)
     ]
-
-    init(viewModel: BrowserViewModel) {
-        self.viewModel = viewModel
-        _runEngine = State(
-            initialValue: AgentRunEngine(
-                toolLoopRunner: LiveAgentToolLoopRunner(searchEngine: viewModel.searchEngine),
-                browserTools: viewModel
-            )
-        )
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,12 +49,6 @@ struct AgentChatPanelView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("agent.chat.panel")
-        .onChange(of: runEngine.session.finalAnswer) { _, answer in
-            appendAgentMessage(answer)
-        }
-        .onChange(of: runEngine.session.error?.message) { _, message in
-            appendAgentMessage(message.map { "Run failed: \($0)" })
-        }
     }
 
     private var header: some View {
@@ -137,13 +122,13 @@ struct AgentChatPanelView: View {
                     .background(.thinMaterial, in: Circle())
 
                 VStack(alignment: .leading, spacing: AeroSpacing.xs) {
-                    Text(activePageTitle)
+                    Text(pageTitle)
                         .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(AeroColor.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
-                    Text(activePageSubtitle)
+                    Text(pageSubtitle)
                         .font(AeroFont.caption)
                         .foregroundStyle(AeroColor.textSecondary)
                         .lineLimit(1)
@@ -180,11 +165,11 @@ struct AgentChatPanelView: View {
         VStack(alignment: .leading, spacing: AeroSpacing.sm) {
             AgentSectionHeader(title: "Transcript")
 
-            if messages.isEmpty {
+            if transcriptMessages.isEmpty {
                 emptyTranscript
             } else {
                 VStack(spacing: AeroSpacing.md) {
-                    ForEach(messages) { message in
+                    ForEach(transcriptMessages) { message in
                         AgentMessageBubble(message: message)
                     }
                 }
@@ -244,8 +229,8 @@ struct AgentChatPanelView: View {
                         }
                     }
 
-                    if runState == .approvalNeeded {
-                        approvalActions
+                    if let pendingApproval = engine.session.pendingApproval {
+                        approvalActions(pendingApproval)
                             .padding(.top, runLogItems.isEmpty ? 0 : AeroSpacing.sm)
                             .padding([.horizontal, .bottom], AeroSpacing.md)
                     } else if runState == .failed {
@@ -274,7 +259,7 @@ struct AgentChatPanelView: View {
         .background(statusColor.opacity(0.12), in: Capsule())
     }
 
-    private var approvalActions: some View {
+    private func approvalActions(_ approval: AgentApprovalRequest) -> some View {
         VStack(alignment: .leading, spacing: AeroSpacing.sm) {
             HStack(alignment: .top, spacing: AeroSpacing.sm) {
                 Image(systemName: "hand.raised")
@@ -283,10 +268,17 @@ struct AgentChatPanelView: View {
                     .frame(width: 30, height: 30)
                     .background(AeroColor.warning.opacity(0.14), in: Circle())
 
-                Text("Approve page access to continue.")
-                    .font(AeroFont.caption)
-                    .foregroundStyle(AeroColor.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(approval.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AeroColor.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(approval.detail)
+                        .font(AeroFont.caption)
+                        .foregroundStyle(AeroColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Spacer(minLength: 0)
             }
@@ -294,14 +286,14 @@ struct AgentChatPanelView: View {
             HStack(spacing: AeroSpacing.sm) {
                 Spacer(minLength: 0)
 
-                Button("Not now") {
+                Button("Deny") {
                     declineApproval()
                 }
                 .font(.system(size: 13, weight: .semibold))
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Button("Allow once") {
+                Button("Approve") {
                     approveAccess()
                 }
                 .font(.system(size: 13, weight: .semibold))
@@ -379,8 +371,8 @@ struct AgentChatPanelView: View {
                     .fill(Color(UIColor.systemBackground).opacity(0.34))
                     .browserLiquidGlassBackground(in: Circle())
             }
-            .disabled(!runEngine.session.status.isActive)
-            .opacity(runEngine.session.status.isActive ? 1 : 0.45)
+            .disabled(!canStop)
+            .opacity(canStop ? 1 : 0.45)
             .accessibilityLabel("Stop")
             .accessibilityIdentifier("agent.chat.stop")
 
@@ -415,20 +407,12 @@ struct AgentChatPanelView: View {
         }
     }
 
-    private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var activePageTitle: String {
-        viewModel.activeTab?.displayTitle ?? "New Tab"
-    }
-
-    private var activePageSubtitle: String {
-        viewModel.activeTab?.displayURL?.displayHost ?? "Ready for browsing tasks"
+    private var session: AgentRunSession {
+        engine.session
     }
 
     private var runState: AgentPanelRunState {
-        switch runEngine.session.status {
+        switch session.status {
         case .idle:
             return .ready
         case .running:
@@ -444,8 +428,64 @@ struct AgentChatPanelView: View {
         }
     }
 
+    private var canSend: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canStop: Bool {
+        session.status.isActive
+    }
+
+    private var transcriptMessages: [AgentPanelMessage] {
+        var messages: [AgentPanelMessage] = []
+
+        if !session.prompt.isEmpty {
+            messages.append(
+                AgentPanelMessage(
+                    id: session.id,
+                    role: .user,
+                    text: session.prompt,
+                    timestampLabel: timestampLabel(for: session.startedAt)
+                )
+            )
+        }
+
+        if let finalAnswer = session.finalAnswer {
+            messages.append(
+                AgentPanelMessage(
+                    id: session.steps.first { $0.kind == .finalAnswer }?.id ?? session.id,
+                    role: .agent,
+                    text: finalAnswer,
+                    timestampLabel: timestampLabel(for: session.endedAt ?? Date())
+                )
+            )
+        }
+
+        if let error = session.error {
+            messages.append(
+                AgentPanelMessage(
+                    id: session.steps.first { $0.kind == .error }?.id ?? session.id,
+                    role: .agent,
+                    text: error.message,
+                    timestampLabel: timestampLabel(for: session.endedAt ?? Date())
+                )
+            )
+        }
+
+        return messages
+    }
+
     private var runLogItems: [AgentRunLogItem] {
-        runEngine.session.steps.map(AgentRunLogItem.init)
+        session.steps.map { step in
+            AgentRunLogItem(
+                id: step.id,
+                phase: phase(for: step),
+                status: status(for: step.status),
+                title: step.title,
+                detail: step.detail,
+                metadataLabel: timestampLabel(for: step.completedAt ?? step.createdAt)
+            )
+        }
     }
 
     private var statusTitle: String {
@@ -500,96 +540,28 @@ struct AgentChatPanelView: View {
     }
 
     private var stopButtonColor: Color {
-        runState == .stopped ? AeroColor.error : AeroColor.textPrimary
+        canStop ? AeroColor.textPrimary : AeroColor.textTertiary
     }
 
-    private func sendDraft() {
-        let trimmedDraft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedDraft.isEmpty else { return }
-
-        messages.append(
-            AgentPanelMessage(
-                role: .user,
-                text: trimmedDraft,
-                timestampLabel: "Now"
-            )
-        )
-        runEngine.start(prompt: trimmedDraft)
-        draft = ""
-    }
-
-    private func stopRun() {
-        runEngine.stop()
-    }
-
-    private func clearConversation() {
-        draft = ""
-        messages = []
-        runEngine.clear()
-    }
-
-    private func approveAccess() {
-        appendAgentMessage("Approval handling is not available for this deterministic run yet.")
-    }
-
-    private func declineApproval() {
-        runEngine.stop()
-    }
-
-    private func retryRun() {
-        guard !runEngine.session.prompt.isEmpty else { return }
-        runEngine.start(prompt: runEngine.session.prompt)
-    }
-
-    private func appendAgentMessage(_ text: String?) {
-        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
-        guard messages.last?.role != .agent || messages.last?.text != text else { return }
-
-        messages.append(
-            AgentPanelMessage(
-                role: .agent,
-                text: text,
-                timestampLabel: "Now"
-            )
-        )
-    }
-}
-
-private extension AgentRunLogItem {
-    init(_ step: AgentRunStep) {
-        self.init(
-            id: step.id,
-            phase: AgentRunLogItem.phase(for: step),
-            status: AgentRunLogItem.status(for: step.status),
-            title: step.title,
-            detail: step.detail,
-            metadataLabel: step.completedAt == nil ? nil : "Done"
-        )
-    }
-
-    static func phase(for step: AgentRunStep) -> Phase {
+    private func phase(for step: AgentRunStep) -> AgentRunLogItem.Phase {
         switch step.kind {
-        case .approval:
-            return .approvalNeeded
-        case .error:
-            return .error
-        case .finalAnswer:
-            return .finalAnswer
         case .run:
-            return .result
+            return .selectedAction
         case .browserTool:
-            let title = step.title.lowercased()
-            if title.contains("observe") || title.contains("wait") || title.contains("extract") {
+            if step.title.localizedCaseInsensitiveContains("observe") {
                 return .observePage
             }
-            if title.contains("scroll") {
-                return .retry
-            }
-            return .selectedAction
+            return .result
+        case .approval:
+            return .approvalNeeded
+        case .finalAnswer:
+            return .finalAnswer
+        case .error:
+            return .error
         }
     }
 
-    static func status(for status: AgentRunStepStatus) -> Status {
+    private func status(for status: AgentRunStepStatus) -> AgentRunLogItem.Status {
         switch status {
         case .queued:
             return .queued
@@ -604,6 +576,51 @@ private extension AgentRunLogItem {
         case .stopped:
             return .stopped
         }
+    }
+
+    private func timestampLabel(for date: Date) -> String {
+        let elapsed = max(0, Int(Date().timeIntervalSince(date)))
+        if elapsed < 60 {
+            return "Now"
+        }
+        if elapsed < 3_600 {
+            return "\(elapsed / 60)m"
+        }
+
+        return "\(elapsed / 3_600)h"
+    }
+
+    private func sendDraft() {
+        let trimmedDraft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDraft.isEmpty else { return }
+
+        viewModel.startAgentRun(prompt: trimmedDraft)
+        draft = ""
+        isInputFocused = false
+    }
+
+    private func stopRun() {
+        viewModel.stopAgentRun()
+    }
+
+    private func clearConversation() {
+        draft = ""
+        viewModel.clearAgentRunSession()
+    }
+
+    private func approveAccess() {
+        viewModel.approvePendingAgentAction()
+    }
+
+    private func declineApproval() {
+        viewModel.denyPendingAgentAction()
+    }
+
+    private func retryRun() {
+        let prompt = session.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else { return }
+
+        viewModel.startAgentRun(prompt: prompt)
     }
 }
 
