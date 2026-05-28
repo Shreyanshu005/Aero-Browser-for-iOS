@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var isImportingBackground = false
     @State private var backgroundImportError: String?
     @State private var backgroundSettings = NewTabBackgroundSettings.shared
+    @State private var agentProviderSettingsViewModel = AgentProviderSettingsViewModel()
 
     var body: some View {
         NavigationStack {
@@ -99,6 +100,18 @@ struct SettingsView: View {
                             dataStore.removeData(ofTypes: types, for: records) {}
                         }
                     }
+                }
+
+                Section("Agent") {
+                    NavigationLink {
+                        AgentProviderSettingsView(viewModel: agentProviderSettingsViewModel)
+                    } label: {
+                        LabeledContent(
+                            "Provider",
+                            value: agentProviderSettingsViewModel.selectedProviderID.displayName
+                        )
+                    }
+                    .accessibilityIdentifier("browser.settings.agentProvider")
                 }
 
                 Section("About") {

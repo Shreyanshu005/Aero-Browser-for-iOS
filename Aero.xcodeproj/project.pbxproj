@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F3A9B4C12FC1000100A00001 /* SwiftyAI in Frameworks */ = {isa = PBXBuildFile; productRef = F3A9B4C12FC1000100A00002 /* SwiftyAI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		63A24D952FAE587900E29485 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F3A9B4C12FC1000100A00001 /* SwiftyAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = Aero;
 			packageProductDependencies = (
+				F3A9B4C12FC1000100A00002 /* SwiftyAI */,
 			);
 			productName = Aero;
 			productReference = 63A24D872FAE587500E29485 /* Aero.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 63A24D7E2FAE587500E29485;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F3A9B4C12FC1000100A00003 /* XCRemoteSwiftPackageReference "SwiftyAI" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 63A24D882FAE587500E29485 /* Products */;
 			projectDirPath = "";
@@ -572,6 +581,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F3A9B4C12FC1000100A00003 /* XCRemoteSwiftPackageReference "SwiftyAI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Kartikayy007/SwiftyAI.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F3A9B4C12FC1000100A00002 /* SwiftyAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F3A9B4C12FC1000100A00003 /* XCRemoteSwiftPackageReference "SwiftyAI" */;
+			productName = SwiftyAI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 63A24D7F2FAE587500E29485 /* Project object */;
 }
