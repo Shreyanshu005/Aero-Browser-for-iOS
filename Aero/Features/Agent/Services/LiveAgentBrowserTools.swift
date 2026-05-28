@@ -193,22 +193,24 @@ final class LiveAgentBrowserTools: AgentBrowserTooling {
     }
 
     private func extractionSummary(for bundle: AgentExtractionBundle) -> String {
-        let counts = [
-            ("posts", bundle.posts.count),
-            ("prices", bundle.prices.count),
-            ("product cards", bundle.productCards.count),
-            ("links", bundle.links.count),
-            ("headings", bundle.headings.count),
-            ("tables", bundle.tables.count),
-            ("search results", bundle.searchResults.count),
-        ]
-            .filter { $0.1 > 0 }
-            .map { "\($0.1) \($0.0)" }
+        var counts: [String] = []
+        appendExtractionCount(bundle.posts.count, label: "posts", to: &counts)
+        appendExtractionCount(bundle.prices.count, label: "prices", to: &counts)
+        appendExtractionCount(bundle.productCards.count, label: "product cards", to: &counts)
+        appendExtractionCount(bundle.links.count, label: "links", to: &counts)
+        appendExtractionCount(bundle.headings.count, label: "headings", to: &counts)
+        appendExtractionCount(bundle.tables.count, label: "tables", to: &counts)
+        appendExtractionCount(bundle.searchResults.count, label: "search results", to: &counts)
 
         guard !counts.isEmpty else {
             return "No structured data extracted."
         }
         return "Extracted \(counts.joined(separator: ", "))."
+    }
+
+    private func appendExtractionCount(_ count: Int, label: String, to counts: inout [String]) {
+        guard count > 0 else { return }
+        counts.append("\(count) \(label)")
     }
 }
 
