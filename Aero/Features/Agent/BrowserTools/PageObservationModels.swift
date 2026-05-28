@@ -145,6 +145,10 @@ struct PageObservedElement: Codable, Equatable {
     var label: String
     var text: String?
     var isEnabled: Bool
+    var tagName: String? = nil
+    var role: String? = nil
+    var className: String? = nil
+    var dataTestID: String? = nil
 }
 
 struct PageScrollMetrics: Codable, Equatable {
