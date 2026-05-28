@@ -13,6 +13,15 @@ struct MenuSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    menuButton("sparkles", "Agent") {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            viewModel.showAgentPanel = true
+                        }
+                    }
+                    .accessibilityIdentifier("browser.menu.agent")
+                }
 
                 if viewModel.activeTab?.url != nil {
                     Section {

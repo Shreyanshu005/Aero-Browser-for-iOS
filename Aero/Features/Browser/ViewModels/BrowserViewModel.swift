@@ -57,6 +57,7 @@ final class BrowserViewModel {
     var showAddBookmark: Bool = false
     var showFindInPage: Bool = false
     var showTrackerReceipt: Bool = false
+    var showAgentPanel: Bool = false
     var pendingDownload: PendingDownload?
     var pendingJavaScriptDialog: JavaScriptDialogRequest?
     var pendingLinkActionRequest: LinkActionRequest?
