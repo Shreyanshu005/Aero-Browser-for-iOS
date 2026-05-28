@@ -151,8 +151,10 @@ struct LocalSuggestionProvider {
 
     private func normalizedURLKey(_ url: URL) -> String {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.scheme = components?.scheme?.lowercased()
-        components?.host = components?.host?.lowercased()
+        let lowercasedScheme = components?.scheme?.lowercased()
+        let lowercasedHost = components?.host?.lowercased()
+        components?.scheme = lowercasedScheme
+        components?.host = lowercasedHost
 
         var value = components?.url?.absoluteString.lowercased() ?? url.absoluteString.lowercased()
         if value.hasSuffix("/") {

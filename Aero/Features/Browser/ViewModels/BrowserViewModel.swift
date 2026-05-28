@@ -199,7 +199,19 @@ final class BrowserViewModel {
 
 
     func goBack() {
-        activeTab?.webView?.goBack()
+        if activeTab?.webView?.canGoBack == true {
+            activeTab?.webView?.goBack()
+            return
+        }
+
+        // No more web history: go back to home/new tab.
+        if activeTab?.url != nil {
+            activeTab?.url = nil
+            activeTab?.title = ""
+            addressBarText = ""
+            isAddressBarFocused = false
+            chromeController.expand()
+        }
     }
 
     func goForward() {

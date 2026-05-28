@@ -46,7 +46,7 @@ struct BrowserSurfaceView: View {
                         .animation(.easeOut(duration: 0.2), value: toast)
                     }
 
-                    if viewModel.isAddressBarFocused {
+                    if viewModel.isAddressBarFocused && keyboard.isVisible {
                         SearchSuggestionsOverlayView(viewModel: viewModel)
                             .transition(.opacity)
                     }

@@ -9,10 +9,10 @@ struct BottomBrowserChromeView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if viewModel.chromeMode == .expanded {
-                expandedChrome
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            expandedChrome
+                .opacity(viewModel.chromeMode == .expanded ? 1 : 0)
+                .offset(y: viewModel.chromeMode == .expanded ? 0 : 90)
+                .allowsHitTesting(viewModel.chromeMode == .expanded)
 
             if viewModel.chromeMode == .compact {
                 CompactAddressPillView(viewModel: viewModel)
@@ -26,20 +26,13 @@ struct BottomBrowserChromeView: View {
     }
 
     private var expandedChrome: some View {
-        VStack(spacing: AeroSpacing.sm) {
-            bottomBar
-                .transition(.chromeBlurReplace)
-        }
-        .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
-        .animation(AeroAnimation.smooth, value: viewModel.searchSuggestions.isEmpty)
+        bottomBar
+            .animation(AeroAnimation.smooth, value: viewModel.isAddressBarFocused)
+            .animation(AeroAnimation.smooth, value: viewModel.searchSuggestions.isEmpty)
     }
 
     private var bottomBar: some View {
         VStack(spacing: AeroSpacing.sm) {
-            if let tab = viewModel.activeTab {
-                ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
-            }
-
             HStack(spacing: AeroSpacing.sm) {
                 addressControl
                     .matchedGeometryEffect(id: "address", in: addressTransition)

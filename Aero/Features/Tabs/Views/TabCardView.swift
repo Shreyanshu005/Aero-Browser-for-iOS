@@ -32,15 +32,8 @@ struct TabCardView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
-                titleBar
-                    .frame(height: titleBarHeight)
-                snapshotArea
-                    .frame(width: geo.size.width, height: max(0, geo.size.height - titleBarHeight))
-            }
-        }
-        .background(cardBackground)
+        snapshotArea
+        .background(Color(uiColor: tab.pageBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
@@ -51,60 +44,6 @@ struct TabCardView: View {
         )
         .shadow(color: accentColor.opacity(isActive ? 0.18 : 0), radius: 24, y: 10)
         .shadow(color: .black.opacity(isActive ? 0.56 : 0.44), radius: isActive ? 30 : 22, y: 14)
-    }
-
-    private var titleBar: some View {
-        HStack(spacing: 11) {
-            faviconView
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(isActive ? 0.94 : 0.78))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .minimumScaleFactor(0.78)
-
-                Text(subtitle)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.44))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
-
-            HStack(spacing: 6) {
-                if tab.isPrivate {
-                    statusBadge(systemName: "eye.slash.fill")
-                }
-
-                if isActive {
-                    statusBadge(systemName: "checkmark.circle.fill")
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .background {
-            ZStack {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-                LinearGradient(
-                    colors: [
-                        accentColor.opacity(tab.isPrivate ? 0.28 : 0.16),
-                        Color.black.opacity(0.36)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(isActive ? 0.14 : 0.07))
-                .frame(height: 0.7)
-        }
     }
 
     private var snapshotArea: some View {
@@ -131,20 +70,24 @@ struct TabCardView: View {
         .clipped()
     }
 
+
     @ViewBuilder
     private var snapshotContent: some View {
         if let snapshot = tab.snapshot {
-            Image(uiImage: snapshot)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .background(Color.black)
+            GeometryReader { geo in
+                Image(uiImage: snapshot)
+                    .resizable()
+                    .aspectRatio(geo.size.width / max(geo.size.height, 1), contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
         } else if let webView = tab.webView {
-            TabWebViewSnapshot(webView: webView)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .allowsHitTesting(false)
+            ZStack {
+                Color(uiColor: tab.pageBackgroundColor)
+                TabWebViewSnapshot(webView: webView)
+                    .clipped()
+                    .allowsHitTesting(false)
+            }
         } else {
             ZStack {
                 LinearGradient(

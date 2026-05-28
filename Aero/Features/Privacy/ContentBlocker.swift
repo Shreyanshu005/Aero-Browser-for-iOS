@@ -28,10 +28,6 @@ final class ContentBlocker {
         {
             "trigger": { "url-filter": ".*\\.ads\\..*" },
             "action": { "type": "block" }
-        },
-        {
-            "trigger": { "url-filter": ".*tracker.*", "resource-type": ["script", "image"] },
-            "action": { "type": "block" }
         }
     ]
     """#
