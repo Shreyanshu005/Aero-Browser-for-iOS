@@ -215,7 +215,6 @@ extension PageObservationService {
         textPieces: 160,
         textNodesVisited: 5000
       };
-
       const elementIDAttribute = '\(BrowserActionJavaScript.elementIDAttribute)';
       const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
       const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
@@ -316,7 +315,11 @@ extension PageObservationService {
       function targetFor(element, kind) {
         const path = targetPathFor(element);
         const id = targetID(kind, path);
-        element.setAttribute(elementIDAttribute, id);
+        if (id) {
+          try {
+            element.setAttribute(elementIDAttribute, id);
+          } catch (error) {}
+        }
         return {
           targetID: id,
           targetPath: path
