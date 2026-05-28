@@ -215,25 +215,27 @@ struct AgentChatPanelView: View {
             AeroGlassPanel(style: .panel, cornerRadius: AeroRadius.lg) {
                 VStack(spacing: 0) {
                     if runLog.isEmpty {
-                        Text("Waiting for a task.")
+                        Text("Waiting for a task. Timeline steps will appear here.")
                             .font(AeroFont.caption)
                             .foregroundStyle(AeroColor.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(AeroSpacing.md)
                     } else {
                         ForEach(Array(runLog.enumerated()), id: \.element.id) { index, item in
-                            AgentRunLogRow(item: item)
-
-                            if index < runLog.count - 1 {
-                                Divider()
-                                    .opacity(0.55)
-                                    .padding(.leading, 44)
-                            }
+                            AgentRunTimelineRow(
+                                item: item,
+                                isFirst: index == 0,
+                                isLast: index == runLog.count - 1
+                            )
                         }
                     }
 
                     if runState == .approvalNeeded {
                         approvalActions
+                            .padding(.top, runLog.isEmpty ? 0 : AeroSpacing.sm)
+                            .padding([.horizontal, .bottom], AeroSpacing.md)
+                    } else if runState == .failed {
+                        retryActions
                             .padding(.top, runLog.isEmpty ? 0 : AeroSpacing.sm)
                             .padding([.horizontal, .bottom], AeroSpacing.md)
                     }
@@ -294,6 +296,37 @@ struct AgentChatPanelView: View {
             }
         }
         .accessibilityIdentifier("agent.chat.approval")
+    }
+
+    private var retryActions: some View {
+        VStack(alignment: .leading, spacing: AeroSpacing.sm) {
+            HStack(alignment: .top, spacing: AeroSpacing.sm) {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AeroColor.error)
+                    .frame(width: 30, height: 30)
+                    .background(AeroColor.error.opacity(0.14), in: Circle())
+
+                Text("Retry the blocked step or start a new task.")
+                    .font(AeroFont.caption)
+                    .foregroundStyle(AeroColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: AeroSpacing.sm) {
+                Spacer(minLength: 0)
+
+                Button("Retry") {
+                    retryRun()
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .accessibilityIdentifier("agent.chat.retry")
     }
 
     private var composer: some View {
@@ -380,6 +413,10 @@ struct AgentChatPanelView: View {
             return "Working"
         case .approvalNeeded:
             return "Needs approval"
+        case .failed:
+            return "Blocked"
+        case .completed:
+            return "Complete"
         case .stopped:
             return "Stopped"
         }
@@ -393,6 +430,10 @@ struct AgentChatPanelView: View {
             return "arrow.triangle.2.circlepath"
         case .approvalNeeded:
             return "hand.raised.fill"
+        case .failed:
+            return "exclamationmark.triangle.fill"
+        case .completed:
+            return "checkmark.circle.fill"
         case .stopped:
             return "stop.fill"
         }
@@ -406,6 +447,10 @@ struct AgentChatPanelView: View {
             return Color(UIColor.systemBlue)
         case .approvalNeeded:
             return AeroColor.warning
+        case .failed:
+            return AeroColor.error
+        case .completed:
+            return AeroColor.success
         case .stopped:
             return AeroColor.error
         }
@@ -435,17 +480,21 @@ struct AgentChatPanelView: View {
         )
         runLog = [
             AgentRunLogItem(
-                kind: .completed,
+                phase: .observePage,
+                status: .completed,
                 title: "Task captured",
-                detail: trimmedDraft
+                detail: trimmedDraft,
+                metadataLabel: "Now"
             ),
             AgentRunLogItem(
-                kind: .running,
+                phase: .selectedAction,
+                status: .running,
                 title: "Planning steps",
                 detail: "Preparing page review and tab checks."
             ),
             AgentRunLogItem(
-                kind: .approvalNeeded,
+                phase: .approvalNeeded,
+                status: .approvalNeeded,
                 title: "Approval needed",
                 detail: "Allow access to the current page before continuing."
             ),
@@ -458,7 +507,8 @@ struct AgentChatPanelView: View {
         runState = .stopped
         runLog.append(
             AgentRunLogItem(
-                kind: .stopped,
+                phase: .result,
+                status: .stopped,
                 title: "Run stopped",
                 detail: "No more steps will be taken for this task."
             )
@@ -476,7 +526,8 @@ struct AgentChatPanelView: View {
         runState = .running
         runLog.append(
             AgentRunLogItem(
-                kind: .running,
+                phase: .result,
+                status: .completed,
                 title: "Access approved",
                 detail: "Continuing with the current page."
             )
@@ -487,9 +538,23 @@ struct AgentChatPanelView: View {
         runState = .stopped
         runLog.append(
             AgentRunLogItem(
-                kind: .stopped,
+                phase: .result,
+                status: .stopped,
                 title: "Approval skipped",
                 detail: "The current task is paused."
+            )
+        )
+    }
+
+    private func retryRun() {
+        runState = .running
+        runLog.append(
+            AgentRunLogItem(
+                phase: .retry,
+                status: .running,
+                title: "Retrying step",
+                detail: "Rechecking the page before trying the action again.",
+                metadataLabel: "Now"
             )
         )
     }
@@ -613,23 +678,43 @@ private struct AgentMessageBubble: View {
     }
 }
 
-private struct AgentRunLogRow: View {
+private struct AgentRunTimelineRow: View {
     var item: AgentRunLogItem
+    var isFirst: Bool
+    var isLast: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: AeroSpacing.md) {
-            Image(systemName: iconName)
-                .font(.system(size: 14, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(tint)
-                .frame(width: 30, height: 30)
-                .background(tint.opacity(0.12), in: Circle())
+            VStack(spacing: AeroSpacing.xs) {
+                Rectangle()
+                    .fill(isFirst ? Color.clear : tint.opacity(0.28))
+                    .frame(width: 2, height: 10)
+
+                Image(systemName: iconName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(tint)
+                    .frame(width: 30, height: 30)
+                    .background(tint.opacity(0.12), in: Circle())
+
+                Rectangle()
+                    .fill(isLast ? Color.clear : tint.opacity(0.28))
+                    .frame(width: 2)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(width: 30)
 
             VStack(alignment: .leading, spacing: AeroSpacing.xs) {
-                Text(item.title)
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(AeroColor.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: AeroSpacing.xs) {
+                    Text(item.title)
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(AeroColor.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    statusBadge
+
+                    Spacer(minLength: 0)
+                }
 
                 Text(item.detail)
                     .font(AeroFont.caption)
@@ -639,34 +724,79 @@ private struct AgentRunLogRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(AeroSpacing.md)
+        .padding(.horizontal, AeroSpacing.md)
+        .padding(.vertical, AeroSpacing.sm)
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        HStack(spacing: 4) {
+            Text(statusLabel)
+                .font(.system(size: 10, weight: .bold))
+
+            if let metadataLabel = item.metadataLabel {
+                Text(metadataLabel)
+                    .font(.system(size: 10, weight: .medium))
+            }
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(tint.opacity(0.12), in: Capsule())
     }
 
     private var iconName: String {
-        switch item.kind {
-        case .queued:
-            return "circle.dotted"
-        case .running:
-            return "arrow.triangle.2.circlepath"
+        switch item.phase {
+        case .observePage:
+            return "eye"
+        case .selectedAction:
+            return "cursorarrow.click.2"
+        case .result:
+            return "checklist"
         case .approvalNeeded:
             return "hand.raised.fill"
+        case .retry:
+            return "arrow.counterclockwise"
+        case .error:
+            return "exclamationmark.triangle.fill"
+        case .finalAnswer:
+            return "sparkles"
+        }
+    }
+
+    private var statusLabel: String {
+        switch item.status {
+        case .queued:
+            return "Queued"
+        case .running:
+            return "Running"
+        case .waiting:
+            return "Waiting"
+        case .approvalNeeded:
+            return "Approval"
         case .completed:
-            return "checkmark"
+            return "Done"
+        case .failed:
+            return "Failed"
         case .stopped:
-            return "stop.fill"
+            return "Stopped"
         }
     }
 
     private var tint: Color {
-        switch item.kind {
+        switch item.status {
         case .queued:
             return AeroColor.textSecondary
         case .running:
             return Color(UIColor.systemBlue)
+        case .waiting:
+            return AeroColor.textSecondary
         case .approvalNeeded:
             return AeroColor.warning
         case .completed:
             return AeroColor.success
+        case .failed:
+            return AeroColor.error
         case .stopped:
             return AeroColor.error
         }

@@ -4,6 +4,8 @@ enum AgentPanelRunState: Equatable {
     case ready
     case running
     case approvalNeeded
+    case failed
+    case completed
     case stopped
 }
 
@@ -38,29 +40,47 @@ struct AgentPromptChip: Identifiable, Equatable {
 }
 
 struct AgentRunLogItem: Identifiable, Equatable {
-    enum Kind: Equatable {
+    enum Phase: Equatable {
+        case observePage
+        case selectedAction
+        case result
+        case approvalNeeded
+        case retry
+        case error
+        case finalAnswer
+    }
+
+    enum Status: Equatable {
         case queued
         case running
+        case waiting
         case approvalNeeded
         case completed
+        case failed
         case stopped
     }
 
     let id: UUID
-    var kind: Kind
+    var phase: Phase
+    var status: Status
     var title: String
     var detail: String
+    var metadataLabel: String?
 
     init(
         id: UUID = UUID(),
-        kind: Kind,
+        phase: Phase,
+        status: Status,
         title: String,
-        detail: String
+        detail: String,
+        metadataLabel: String? = nil
     ) {
         self.id = id
-        self.kind = kind
+        self.phase = phase
+        self.status = status
         self.title = title
         self.detail = detail
+        self.metadataLabel = metadataLabel
     }
 }
 
@@ -87,19 +107,31 @@ enum AgentPanelSampleData {
 
     static let initialRunLog: [AgentRunLogItem] = [
         AgentRunLogItem(
-            kind: .completed,
-            title: "Task captured",
-            detail: "Ready to compare active and open tabs."
+            phase: .observePage,
+            status: .completed,
+            title: "Observed active page",
+            detail: "Read the visible page title, URL, and open research context.",
+            metadataLabel: "2m"
         ),
         AgentRunLogItem(
-            kind: .approvalNeeded,
+            phase: .selectedAction,
+            status: .completed,
+            title: "Selected action",
+            detail: "Compare the active tab against the research tabs.",
+            metadataLabel: "1m"
+        ),
+        AgentRunLogItem(
+            phase: .approvalNeeded,
+            status: .approvalNeeded,
             title: "Approval needed",
-            detail: "Allow access to the current page before continuing."
+            detail: "Allow access to the current page before continuing.",
+            metadataLabel: "Now"
         ),
         AgentRunLogItem(
-            kind: .queued,
-            title: "Draft response",
-            detail: "Findings will appear in the transcript."
+            phase: .finalAnswer,
+            status: .queued,
+            title: "Final answer",
+            detail: "Findings will appear in the transcript after approval."
         ),
     ]
 }
