@@ -3,6 +3,8 @@ import SwiftUI
 struct CompactAddressPillView: View {
     @Bindable var viewModel: BrowserViewModel
 
+    private let pillHeight: CGFloat = 40
+
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -12,20 +14,28 @@ struct CompactAddressPillView: View {
                 Image(systemName: iconName)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(iconColor)
+                    .frame(width: 15)
 
                 Text(displayText)
                     .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(Color(UIColor.label))
                     .lineLimit(1)
+                    .truncationMode(.middle)
+                    .layoutPriority(1)
             }
-            .padding(.horizontal, AeroSpacing.md)
-            .frame(height: 36)
-            .background(.ultraThinMaterial, in: Capsule())
+            .padding(.horizontal, AeroSpacing.lg)
+            .frame(minWidth: 132)
+            .frame(height: pillHeight)
+            .background {
+                Capsule()
+                    .fill(Color(UIColor.systemBackground).opacity(0.34))
+                    .browserLiquidGlassBackground(in: Capsule())
+            }
             .overlay(
                 Capsule()
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
+                    .strokeBorder(pillBorder, lineWidth: 0.8)
             )
-            .shadow(color: Color.black.opacity(0.16), radius: 12, y: 4)
+            .shadow(color: Color.black.opacity(0.20), radius: 16, y: 6)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -62,5 +72,15 @@ struct CompactAddressPillView: View {
         if viewModel.activeTab?.isSecure == true { return AeroColor.secure }
         return Color(UIColor.secondaryLabel)
     }
-}
 
+    private var pillBorder: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.48),
+                Color(UIColor.separator).opacity(0.24),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}

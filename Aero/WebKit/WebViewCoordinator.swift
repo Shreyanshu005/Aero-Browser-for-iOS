@@ -537,6 +537,22 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
     func webView(
         _ webView: WKWebView,
+        contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
+        completionHandler: @escaping (UIContextMenuConfiguration?) -> Void
+    ) {
+        guard let request = LinkActionRequest(url: elementInfo.linkURL) else {
+            completionHandler(nil)
+            return
+        }
+
+        completionHandler(nil)
+        DispatchQueue.main.async { [onNavigationEvent] in
+            onNavigationEvent(.didRequestLinkActions(request))
+        }
+    }
+
+    func webView(
+        _ webView: WKWebView,
         runJavaScriptAlertPanelWithMessage message: String,
         initiatedByFrame frame: WKFrameInfo,
         completionHandler: @escaping () -> Void

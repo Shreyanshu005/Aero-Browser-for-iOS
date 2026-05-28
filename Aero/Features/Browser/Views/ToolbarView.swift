@@ -1,17 +1,12 @@
-
-
-
-
-
-
-
 import SwiftUI
 
 struct ToolbarView: View {
     @Bindable var viewModel: BrowserViewModel
 
+    private let buttonHeight: CGFloat = 44
+
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: AeroSpacing.xs) {
             toolbarButton(
                 "chevron.left",
                 accessibilityLabel: "Back",
@@ -39,21 +34,27 @@ struct ToolbarView: View {
                 viewModel.newTab()
             }
 
-
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 viewModel.showTabGrid()
             } label: {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 5)
-                        .strokeBorder(Color(UIColor.label), lineWidth: 1.5)
-                        .frame(width: 20, height: 16)
-                    Text("\(viewModel.tabManager.tabCount)")
-                        .font(.system(size: 10, weight: .bold))
+                toolbarButtonShell(isEnabled: true) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(Color(UIColor.label), lineWidth: 1.45)
+                            .frame(width: 22, height: 18)
+
+                        Text(visibleTabCount)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Color(UIColor.label))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.58)
+                            .frame(width: 18)
+                    }
                 }
-                .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .tint(Color(UIColor.label))
+            .buttonStyle(.plain)
             .accessibilityLabel("Tabs")
             .accessibilityValue(Text("\(viewModel.tabManager.tabCount)"))
             .accessibilityIdentifier("browser.toolbar.tabs")
@@ -67,6 +68,7 @@ struct ToolbarView: View {
                 viewModel.showMenu = true
             }
         }
+        .frame(height: buttonHeight)
         .accessibilityIdentifier("browser.toolbar")
     }
 
@@ -82,14 +84,40 @@ struct ToolbarView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .frame(maxWidth: .infinity, minHeight: 44)
+            toolbarButtonShell(isEnabled: enabled) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(enabled ? Color(UIColor.label) : Color(UIColor.tertiaryLabel))
+            }
         }
-        .tint(Color(UIColor.label))
+        .buttonStyle(.plain)
         .disabled(!enabled)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
+    private func toolbarButtonShell<Content: View>(
+        isEnabled: Bool,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .frame(maxWidth: .infinity)
+            .frame(height: buttonHeight)
+            .background {
+                Capsule()
+                    .fill(Color(UIColor.systemBackground).opacity(isEnabled ? 0.18 : 0.08))
+                    .browserLiquidGlassBackground(in: Capsule())
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(Color.white.opacity(isEnabled ? 0.22 : 0.12), lineWidth: 0.6)
+            }
+            .contentShape(Capsule())
+    }
+
+    private var visibleTabCount: String {
+        let count = viewModel.tabManager.tabCount
+        return count > 99 ? "99+" : "\(count)"
+    }
 }

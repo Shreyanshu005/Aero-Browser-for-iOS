@@ -26,32 +26,53 @@ struct AddressBar: View {
                     keyboardType: .webSearch,
                     onSubmit: { viewModel.submitAddressBar() }
                 )
-                .frame(height: 22)
-                .padding(.vertical, 2)
+                .frame(maxWidth: .infinity, minHeight: 24, maxHeight: 24)
+                .layoutPriority(1)
             } else {
                 HStack(spacing: 6) {
                     Image(systemName: iconName)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(iconColor)
+                        .frame(width: 16, height: 16)
 
                     Text(displayText)
                         .font(.system(.body, weight: .medium))
                         .foregroundStyle(displayTextColor)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
+                .layoutPriority(1)
             }
 
             trailingButton
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.black, in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+        .background {
+            Capsule(style: .continuous)
+                .fill(
+                    viewModel.isAddressBarFocused
+                        ? Color(UIColor.systemBackground).opacity(0.52)
+                        : Color(UIColor.secondarySystemBackground).opacity(0.58)
+                )
+                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        }
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(
+                    viewModel.isAddressBarFocused
+                        ? Color(UIColor.label).opacity(0.14)
+                        : Color(UIColor.separator).opacity(0.34),
+                    lineWidth: viewModel.isAddressBarFocused ? 1 : 0.5
+                )
+        }
+        .shadow(
+            color: viewModel.isAddressBarFocused ? Color.black.opacity(0.10) : Color.black.opacity(0.06),
+            radius: viewModel.isAddressBarFocused ? 14 : 8,
+            y: viewModel.isAddressBarFocused ? 5 : 2
         )
-        .contentShape(Rectangle())
+        .contentShape(Capsule(style: .continuous))
         .onTapGesture {
             if !viewModel.isAddressBarFocused {
                 viewModel.syncAddressBarWithActiveTab()
@@ -105,6 +126,8 @@ struct AddressBar: View {
                 viewModel.fetchSearchSuggestions(for: viewModel.addressBarText)
             }
         }
+        .animation(AeroAnimation.quick, value: viewModel.isAddressBarFocused)
+        .animation(AeroAnimation.quick, value: viewModel.addressBarText.isEmpty)
     }
 
     @ViewBuilder
@@ -118,22 +141,33 @@ struct AddressBar: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color(UIColor.tertiaryLabel))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .opacity(viewModel.addressBarText.isEmpty ? 0 : 1)
             .disabled(viewModel.addressBarText.isEmpty)
+            .accessibilityLabel("Clear address")
         } else if viewModel.activeTab?.isLoading == true {
             Button { viewModel.stopLoading() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Stop loading")
         } else if viewModel.activeTab?.displayURL != nil {
             Button { viewModel.reload() } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Reload")
         }
     }
 
@@ -150,6 +184,7 @@ struct AddressBar: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color(UIColor.secondaryLabel))
+                .frame(width: 30, height: 30)
         } else {
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -158,12 +193,13 @@ struct AddressBar: View {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color(UIColor.secondaryLabel))
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+                    .frame(width: 30, height: 30)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .disabled(viewModel.activeTab?.displayURL == nil)
             .opacity(viewModel.activeTab?.displayURL == nil ? 0.35 : 1.0)
+            .accessibilityLabel("Share")
         }
     }
 

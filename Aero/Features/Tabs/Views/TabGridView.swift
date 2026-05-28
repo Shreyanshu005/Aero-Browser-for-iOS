@@ -22,6 +22,13 @@ struct TabGridView: View {
     private let stackPeek: CGFloat = 22
     private let depthScale: CGFloat = 0.055
     private let maxCards = 3
+    private let controlHeight: CGFloat = 46
+
+    private var modeAccent: Color {
+        viewModel.activeBrowsingMode == .privateBrowsing
+            ? Color(red: 0.78, green: 0.46, blue: 1.0)
+            : Color(red: 0.34, green: 0.82, blue: 0.92)
+    }
 
     var body: some View {
         ZStack {
@@ -29,7 +36,14 @@ struct TabGridView: View {
 
             deck
                 .opacity(appeared ? 1 : 0)
-                .padding(.vertical, 32)
+                .padding(.top, 112)
+                .padding(.bottom, 104)
+
+            topControls
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : -10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, 14)
 
             bottomControls
                 .opacity(appeared ? 1 : 0)
@@ -41,6 +55,7 @@ struct TabGridView: View {
         .onAppear {
             withAnimation(.spring(duration: 0.45, bounce: 0.12)) { appeared = true }
         }
+        .preferredColorScheme(.dark)
     }
 
     private var deck: some View {
@@ -179,45 +194,189 @@ struct TabGridView: View {
 
     private var background: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
-                .ignoresSafeArea()
-                .opacity(0.45)
-            RadialGradient(
-                colors: [Color.white.opacity(0.05), Color.clear],
-                center: .top, startRadius: 40, endRadius: 480
+            LinearGradient(
+                colors: [
+                    Color(red: 0.06, green: 0.07, blue: 0.08),
+                    Color(red: 0.015, green: 0.018, blue: 0.022),
+                    Color.black
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
+
+            Rectangle()
+                .fill(.regularMaterial)
+                .environment(\.colorScheme, .dark)
+                .ignoresSafeArea()
+                .opacity(0.34)
+
+            LinearGradient(
+                colors: [
+                    modeAccent.opacity(viewModel.activeBrowsingMode == .privateBrowsing ? 0.24 : 0.18),
+                    Color.white.opacity(0.055),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            .blur(radius: 36)
+
+            Color.black
+                .opacity(viewModel.activeBrowsingMode == .privateBrowsing ? 0.28 : 0.16)
+                .ignoresSafeArea()
         }
     }
 
     private var bottomControls: some View {
-        HStack {
+        HStack(spacing: 14) {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 viewModel.newTab()
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .environment(\.colorScheme, .dark)
+                    .frame(width: 54, height: 54)
+                    .background {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                            Circle()
+                                .fill(modeAccent.opacity(0.22))
+                        }
+                    }
+                    .overlay {
+                        Circle()
+                            .strokeBorder(.white.opacity(0.20), lineWidth: 0.8)
+                    }
+                    .shadow(color: modeAccent.opacity(0.22), radius: 16, y: 8)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("New Tab")
+
             Spacer()
+
             Button { viewModel.hideTabGrid() } label: {
-                Text("Done")
-                    .font(.system(size: 15, weight: .medium))
+                Label("Done", systemImage: "checkmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .labelStyle(.titleAndIcon)
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .frame(minWidth: 98, minHeight: 46)
+                    .padding(.horizontal, 6)
+                    .background {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .environment(\.colorScheme, .dark)
+                    }
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
+                    }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private var topControls: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    viewModel.closeAllTabs()
+                } label: {
+                    Label("Clear", systemImage: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(minWidth: 88, minHeight: controlHeight)
+                        .padding(.horizontal, 4)
+                        .background {
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                        }
+                        .overlay {
+                            Capsule()
+                                .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
+                        }
+                }
+                .buttonStyle(.plain)
+                .disabled(tabs.count <= 1)
+                .opacity(tabs.count <= 1 ? 0.4 : 1.0)
+
+                VStack(spacing: 2) {
+                    Text(viewModel.activeBrowsingMode.tabGridTitle(count: tabs.count))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text(viewModel.activeBrowsingMode == .privateBrowsing ? "Private" : "Browsing")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: controlHeight)
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    viewModel.reopenLastClosedTab()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: controlHeight, height: controlHeight)
+                        .background {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                        }
+                        .overlay {
+                            Circle()
+                                .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
+                        }
+                }
+                .buttonStyle(.plain)
+                .disabled(!viewModel.canReopenLastClosedTab)
+                .opacity(viewModel.canReopenLastClosedTab ? 1 : 0.4)
+                .accessibilityLabel("Reopen Last Closed Tab")
+            }
+
+            Picker("Browsing Mode", selection: browsingModeSelection) {
+                ForEach(BrowsingMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .tint(modeAccent)
+            .frame(height: 38)
+            .padding(3)
+            .background {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(.ultraThinMaterial)
                     .environment(\.colorScheme, .dark)
             }
+            .overlay {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .strokeBorder(.white.opacity(0.13), lineWidth: 0.8)
+            }
+            .environment(\.colorScheme, .dark)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 22)
+    }
+
+    private var browsingModeSelection: Binding<BrowsingMode> {
+        Binding {
+            viewModel.activeBrowsingMode
+        } set: { mode in
+            viewModel.switchBrowsingMode(mode)
+        }
     }
 
     private func horizontalPagingGesture(maxOff: CGFloat) -> some Gesture {

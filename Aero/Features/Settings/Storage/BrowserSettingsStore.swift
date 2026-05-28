@@ -3,18 +3,29 @@ import Foundation
 struct BrowserSettings: Codable, Equatable {
     var searchEngine: SearchEngine
     var contentBlockerEnabled: Bool
+    var newTabBackgroundImagePath: String?
 
-    static let defaults = BrowserSettings(searchEngine: .google, contentBlockerEnabled: true)
+    static let defaults = BrowserSettings(
+        searchEngine: .google,
+        contentBlockerEnabled: true,
+        newTabBackgroundImagePath: nil
+    )
 
-    init(searchEngine: SearchEngine = .google, contentBlockerEnabled: Bool = true) {
+    init(
+        searchEngine: SearchEngine = .google,
+        contentBlockerEnabled: Bool = true,
+        newTabBackgroundImagePath: String? = nil
+    ) {
         self.searchEngine = searchEngine
         self.contentBlockerEnabled = contentBlockerEnabled
+        self.newTabBackgroundImagePath = newTabBackgroundImagePath
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.searchEngine = (try? container.decode(SearchEngine.self, forKey: .searchEngine)) ?? Self.defaults.searchEngine
         self.contentBlockerEnabled = (try? container.decode(Bool.self, forKey: .contentBlockerEnabled)) ?? Self.defaults.contentBlockerEnabled
+        self.newTabBackgroundImagePath = (try? container.decodeIfPresent(String.self, forKey: .newTabBackgroundImagePath)) ?? Self.defaults.newTabBackgroundImagePath
     }
 }
 
@@ -50,6 +61,22 @@ final class BrowserSettingsStore: BrowserSettingsStoring {
     }
 
     func saveSettings(_ settings: BrowserSettings) {
+        var settingsToSave = settings
+        // Existing callers save search/privacy only, so preserve the independent New Tab image setting.
+        if settingsToSave.newTabBackgroundImagePath == nil {
+            settingsToSave.newTabBackgroundImagePath = loadSettings().newTabBackgroundImagePath
+        }
+
+        writeSettings(settingsToSave)
+    }
+
+    func saveNewTabBackgroundImagePath(_ path: String?) {
+        var settings = loadSettings()
+        settings.newTabBackgroundImagePath = path
+        writeSettings(settings)
+    }
+
+    private func writeSettings(_ settings: BrowserSettings) {
         do {
             let data = try JSONEncoder().encode(settings)
             try data.write(to: fileURL, options: .atomic)

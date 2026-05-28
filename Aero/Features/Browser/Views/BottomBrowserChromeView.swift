@@ -4,6 +4,9 @@ struct BottomBrowserChromeView: View {
     @Bindable var viewModel: BrowserViewModel
     @Namespace private var addressTransition
 
+    private let chromeCornerRadius: CGFloat = 28
+    private let addressBarHeight: CGFloat = 46
+
     var body: some View {
         ZStack(alignment: .bottom) {
             expandedChrome
@@ -11,12 +14,13 @@ struct BottomBrowserChromeView: View {
                 .offset(y: viewModel.chromeMode == .expanded ? 0 : 90)
                 .allowsHitTesting(viewModel.chromeMode == .expanded)
 
-            CompactAddressPillView(viewModel: viewModel)
-                .frame(maxWidth: 260)
-                .matchedGeometryEffect(id: "address", in: addressTransition)
-                .opacity(viewModel.chromeMode == .compact ? 1 : 0)
-                .offset(y: viewModel.chromeMode == .compact ? 0 : 24)
-                .allowsHitTesting(viewModel.chromeMode == .compact)
+            if viewModel.chromeMode == .compact {
+                CompactAddressPillView(viewModel: viewModel)
+                    .frame(maxWidth: 260)
+                    .padding(.bottom, AeroSpacing.sm)
+                    .matchedGeometryEffect(id: "address", in: addressTransition)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .animation(AeroAnimation.smooth, value: viewModel.chromeMode)
     }
@@ -30,7 +34,7 @@ struct BottomBrowserChromeView: View {
     private var bottomBar: some View {
         VStack(spacing: AeroSpacing.sm) {
             HStack(spacing: AeroSpacing.sm) {
-                AddressBar(viewModel: viewModel)
+                addressControl
                     .matchedGeometryEffect(id: "address", in: addressTransition)
 
                 if viewModel.isAddressBarFocused {
@@ -41,7 +45,19 @@ struct BottomBrowserChromeView: View {
                         Text("Cancel")
                             .font(.system(.body, weight: .semibold))
                             .foregroundStyle(Color(UIColor.label))
-                            .frame(height: 38)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .frame(width: 68, height: 44)
+                            .background {
+                                Capsule()
+                                    .fill(Color(UIColor.systemBackground).opacity(0.36))
+                                    .browserLiquidGlassBackground(in: Capsule())
+                            }
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.7)
+                            }
+                            .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .transition(.chromeBlurReplace)
@@ -54,25 +70,66 @@ struct BottomBrowserChromeView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, AeroSpacing.md)
-        .padding(.top, AeroSpacing.lg)
-        .padding(.bottom, AeroSpacing.xl)
-        .background {
-            if viewModel.isAddressBarFocused {
-                Color(UIColor.systemGray6)
-            } else {
-                Rectangle().fill(.ultraThinMaterial)
-            }
+        .padding(.horizontal, AeroSpacing.sm)
+        .padding(.top, AeroSpacing.sm)
+        .padding(.bottom, AeroSpacing.md)
+        .background { chromeBackground }
+        .overlay {
+            chromeShape
+                .strokeBorder(chromeBorder, lineWidth: 0.8)
         }
-        .overlay(alignment: .top) {
-            if let tab = viewModel.activeTab {
-                ProgressBar(progress: tab.estimatedProgress, isLoading: tab.isLoading)
-                    .padding(.horizontal, -AeroSpacing.md)
-                    .offset(y: -2)
-                    .transition(.chromeBlurReplace)
-            }
-        }
+        .shadow(color: Color.black.opacity(viewModel.isAddressBarFocused ? 0.10 : 0.18), radius: 22, y: 8)
+        .padding(.horizontal, AeroSpacing.sm)
+        .padding(.bottom, AeroSpacing.sm)
         .gesture(openTabsDragGesture)
+    }
+
+    private var addressControl: some View {
+        AddressBar(viewModel: viewModel)
+            .frame(height: addressBarHeight)
+            .background {
+                Capsule()
+                    .fill(Color(UIColor.systemBackground).opacity(viewModel.isAddressBarFocused ? 0.82 : 0.40))
+                    .browserLiquidGlassBackground(in: Capsule())
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(addressBorder, lineWidth: 0.7)
+            }
+            .shadow(color: Color.black.opacity(viewModel.isAddressBarFocused ? 0.06 : 0.12), radius: 10, y: 3)
+            .contentShape(Capsule())
+    }
+
+    private var chromeBackground: some View {
+        chromeShape
+            .fill(Color(UIColor.systemBackground).opacity(viewModel.isAddressBarFocused ? 0.74 : 0.30))
+            .browserLiquidGlassBackground(in: chromeShape)
+    }
+
+    private var chromeShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: chromeCornerRadius, style: .continuous)
+    }
+
+    private var chromeBorder: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.46),
+                Color(UIColor.separator).opacity(0.24),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var addressBorder: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(viewModel.isAddressBarFocused ? 0.50 : 0.38),
+                Color(UIColor.separator).opacity(0.28),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private var openTabsDragGesture: some Gesture {
@@ -86,9 +143,9 @@ struct BottomBrowserChromeView: View {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
-    func liquidGlassBackground<S: Shape>(in shape: S) -> some View {
+    func browserLiquidGlassBackground<S: Shape>(in shape: S) -> some View {
 #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             self.glassEffect(.regular.interactive(true), in: shape)
