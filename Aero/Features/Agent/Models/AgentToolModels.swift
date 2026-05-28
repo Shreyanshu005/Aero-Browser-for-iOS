@@ -76,6 +76,10 @@ struct AgentBrowserToolResult: Equatable {
     var extractionBundle: AgentExtractionBundle?
     var approvalDecision: AgentApprovalDecision?
 
+    var extraction: AgentExtractionBundle? {
+        extractionBundle
+    }
+
     init(
         summary: String,
         actionResult: BrowserActionResult? = nil,

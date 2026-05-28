@@ -38,10 +38,7 @@ struct BrowserSheets: ViewModifier {
                     .browserSheetPresentation()
             }
             .sheet(isPresented: $viewModel.showAgentPanel) {
-                AgentChatPanelView(
-                    pageTitle: activePageTitle,
-                    pageSubtitle: activePageSubtitle
-                )
+                AgentChatPanelView(viewModel: viewModel)
                 .browserSheetPresentation()
             }
             .sheet(item: $viewModel.pendingDownload) { pendingDownload in
@@ -76,13 +73,6 @@ struct BrowserSheets: ViewModifier {
             }
     }
 
-    private var activePageTitle: String {
-        viewModel.activeTab?.displayTitle ?? "New Tab"
-    }
-
-    private var activePageSubtitle: String {
-        viewModel.activeTab?.displayURL?.displayHost ?? "Ready for browsing tasks"
-    }
 }
 
 extension View {
