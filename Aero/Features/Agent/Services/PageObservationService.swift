@@ -148,7 +148,11 @@ struct PageObservationService {
             kind: element.kind,
             label: cleanHumanText(element.label, limit: PageObservationLimits.maxShortTextCharacters),
             text: cleanHumanTextOptional(element.text, limit: PageObservationLimits.maxElementTextCharacters),
-            isEnabled: element.isEnabled
+            isEnabled: element.isEnabled,
+            tagName: cleanHumanTextOptional(element.tagName, limit: PageObservationLimits.maxShortTextCharacters),
+            role: cleanHumanTextOptional(element.role, limit: PageObservationLimits.maxShortTextCharacters),
+            className: cleanHumanTextOptional(element.className, limit: PageObservationLimits.maxShortTextCharacters),
+            dataTestID: cleanHumanTextOptional(element.dataTestID, limit: PageObservationLimits.maxShortTextCharacters)
         )
     }
 
@@ -212,6 +216,7 @@ extension PageObservationService {
         textNodesVisited: 5000
       };
 
+      const elementIDAttribute = '\(BrowserActionJavaScript.elementIDAttribute)';
       const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
       const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
 
@@ -310,8 +315,10 @@ extension PageObservationService {
 
       function targetFor(element, kind) {
         const path = targetPathFor(element);
+        const id = targetID(kind, path);
+        element.setAttribute(elementIDAttribute, id);
         return {
-          targetID: targetID(kind, path),
+          targetID: id,
           targetPath: path
         };
       }
@@ -424,6 +431,25 @@ extension PageObservationService {
         return limitText(element.value || '', limits.inputValue);
       }
 
+      function dataTestID(element) {
+        return limitText(
+          element.getAttribute('data-testid') ||
+          element.getAttribute('data-test-id') ||
+          element.getAttribute('data-test') ||
+          '',
+          limits.shortText
+        ) || null;
+      }
+
+      function elementMetadata(element) {
+        return {
+          tagName: element.tagName ? element.tagName.toLowerCase() : null,
+          role: limitText(element.getAttribute('role') || '', limits.shortText) || null,
+          className: limitText(element.getAttribute('class') || '', limits.shortText) || null,
+          dataTestID: dataTestID(element)
+        };
+      }
+
       function linkRecord(element) {
         const target = targetFor(element, 'link');
         return {
@@ -480,12 +506,16 @@ extension PageObservationService {
         const fields = Array.from(element.querySelectorAll('input, textarea, select, [contenteditable="true"], [role="textbox"], [role="searchbox"]'))
           .filter(function(field) { return isEditableInput(field) && isVisibleElement(field); })
           .slice(0, limits.formFields);
-        const fieldTargetIDs = fields.map(function(field) {
-          return targetID('input', targetPathFor(field));
+        const fieldTargets = fields.map(function(field) {
+          return {
+            field: field,
+            target: targetFor(field, 'input')
+          };
         });
-        const searchFieldTargetIDs = fields
-          .filter(isSearchField)
-          .map(function(field) { return targetID('input', targetPathFor(field)); });
+        const fieldTargetIDs = fieldTargets.map(function(item) { return item.target.targetID; });
+        const searchFieldTargetIDs = fieldTargets
+          .filter(function(item) { return isSearchField(item.field); })
+          .map(function(item) { return item.target.targetID; });
 
         return {
           targetID: target.targetID,
@@ -537,6 +567,47 @@ extension PageObservationService {
         return limitText(pieces.join(' '), limits.visibleTextSummary);
       }
 
+      function isExtractionCandidate(element) {
+        const tag = element.tagName ? element.tagName.toLowerCase() : '';
+        const role = (element.getAttribute('role') || '').toLowerCase();
+        if (tag === 'article' || role === 'article' || role === 'listitem') return true;
+
+        const tokens = [
+          'product',
+          'product-card',
+          'product-tile',
+          'listing',
+          'sku',
+          'item-card',
+          'search-result',
+          'serp-result',
+          'organic-result',
+          'web-result',
+          'post',
+          'tweet',
+          'status',
+          'feed-item',
+          'comment',
+          'timeline-item'
+        ];
+        const haystack = [
+          element.getAttribute('class'),
+          element.getAttribute('id'),
+          element.getAttribute('role'),
+          element.getAttribute('itemtype'),
+          element.getAttribute('itemprop'),
+          element.getAttribute('aria-label'),
+          element.getAttribute('data-testid'),
+          element.getAttribute('data-test-id'),
+          element.getAttribute('data-test')
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return tokens.some(function(token) { return haystack.includes(token); });
+      }
+
       function collectElements() {
         const selector = [
           'a[href]',
@@ -548,7 +619,32 @@ extension PageObservationService {
           '[role="textbox"]',
           '[role="searchbox"]',
           '[contenteditable="true"]',
-          'form'
+          'form',
+          'article',
+          '[role="article"]',
+          '[role="listitem"]',
+          '[data-testid]',
+          '[data-test-id]',
+          '[data-test]',
+          '[itemtype]',
+          '[itemprop]',
+          '[class*="product"]',
+          '[class*="Product"]',
+          '[class*="listing"]',
+          '[class*="Listing"]',
+          '[class*="search-result"]',
+          '[class*="SearchResult"]',
+          '[class*="serp-result"]',
+          '[class*="organic-result"]',
+          '[class*="web-result"]',
+          '[class*="post"]',
+          '[class*="Post"]',
+          '[class*="tweet"]',
+          '[class*="Tweet"]',
+          '[class*="status"]',
+          '[class*="Status"]',
+          '[class*="feed-item"]',
+          '[class*="timeline-item"]'
         ].join(',');
         const records = [];
         const seen = new Set();
@@ -558,12 +654,14 @@ extension PageObservationService {
           let kind = null;
           if (element.tagName.toLowerCase() === 'form') {
             kind = 'form';
-          } else if (element.matches('a[href]')) {
-            kind = 'link';
           } else if (isButtonElement(element)) {
             kind = 'button';
           } else if (isEditableInput(element)) {
             kind = 'input';
+          } else if (element.matches('a[href]')) {
+            kind = 'link';
+          } else if (isExtractionCandidate(element)) {
+            kind = 'other';
           }
 
           if (!kind) continue;
@@ -586,13 +684,18 @@ extension PageObservationService {
             text = limitText(element.innerText || element.textContent || '', limits.elementText) || null;
           }
 
+          const metadata = elementMetadata(element);
           records.push({
             targetID: target.targetID,
             targetPath: target.targetPath,
             kind: kind,
             label: label,
             text: text,
-            isEnabled: enabled
+            isEnabled: enabled,
+            tagName: metadata.tagName,
+            role: metadata.role,
+            className: metadata.className,
+            dataTestID: metadata.dataTestID
           });
 
           if (records.length >= limits.elements) break;
@@ -602,7 +705,7 @@ extension PageObservationService {
       }
 
       const links = Array.from(document.querySelectorAll('a[href]'))
-        .filter(isVisibleElement)
+        .filter(function(element) { return !isButtonElement(element) && isVisibleElement(element); })
         .slice(0, limits.links)
         .map(linkRecord);
 
