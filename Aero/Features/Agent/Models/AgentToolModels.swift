@@ -70,17 +70,39 @@ struct AgentPageElement: Identifiable, Equatable {
 
 struct AgentBrowserToolResult: Equatable {
     var summary: String
+    var actionResult: BrowserActionResult?
+    var pageObservation: AgentPageObservation?
+    var extractionInput: AgentExtractionInput?
+    var extractionBundle: AgentExtractionBundle?
+    var approvalDecision: AgentApprovalDecision?
 
-    init(summary: String) {
+    init(
+        summary: String,
+        actionResult: BrowserActionResult? = nil,
+        pageObservation: AgentPageObservation? = nil,
+        extractionInput: AgentExtractionInput? = nil,
+        extractionBundle: AgentExtractionBundle? = nil,
+        approvalDecision: AgentApprovalDecision? = nil
+    ) {
         self.summary = summary
+        self.actionResult = actionResult
+        self.pageObservation = pageObservation
+        self.extractionInput = extractionInput
+        self.extractionBundle = extractionBundle
+        self.approvalDecision = approvalDecision
     }
 }
 
 struct AgentDataExtractionRequest: Equatable {
     var prompt: String
+    var kinds: Set<AgentExtractionKind>
 
-    init(prompt: String) {
+    init(
+        prompt: String,
+        kinds: Set<AgentExtractionKind> = Set(AgentExtractionKind.allCases)
+    ) {
         self.prompt = prompt
+        self.kinds = kinds
     }
 }
 

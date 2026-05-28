@@ -16,6 +16,8 @@ final class BrowserViewModel {
 
     @ObservationIgnored
     private var queuedJavaScriptDialogs: [JavaScriptDialogRequest] = []
+    @ObservationIgnored
+    var agentApprovalHandler: ((AgentApprovalRequest) async -> AgentApprovalDecision)?
 
     var tabManager: TabManager
     var historyStore: HistoryStore
@@ -370,6 +372,12 @@ final class BrowserViewModel {
 
         pendingJavaScriptDialog = request
         chromeController.expand()
+    }
+
+    func requestAgentBrowserToolApproval(_ request: AgentApprovalRequest) async -> AgentApprovalDecision {
+        showAgentPanel = true
+        guard let agentApprovalHandler else { return .denied }
+        return await agentApprovalHandler(request)
     }
 
     func acceptJavaScriptDialog(id: UUID, promptText: String? = nil) {
