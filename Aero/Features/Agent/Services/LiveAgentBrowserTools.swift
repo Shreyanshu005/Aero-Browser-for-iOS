@@ -13,11 +13,11 @@ final class LiveAgentBrowserTools: AgentBrowserTooling {
 
     init(
         target: BrowserActionTarget,
-        actionExecutor: BrowserActionExecutor = BrowserActionExecutor(),
+        actionExecutor: BrowserActionExecutor? = nil,
         extractionService: AgentExtractionService = AgentExtractionService()
     ) {
         self.target = target
-        self.actionExecutor = actionExecutor
+        self.actionExecutor = actionExecutor ?? BrowserActionExecutor()
         self.extractionService = extractionService
     }
 
