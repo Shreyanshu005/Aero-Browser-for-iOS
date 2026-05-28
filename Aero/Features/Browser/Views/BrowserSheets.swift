@@ -37,6 +37,13 @@ struct BrowserSheets: ViewModifier {
                 TrackerReceiptView(viewModel: viewModel)
                     .browserSheetPresentation()
             }
+            .sheet(isPresented: $viewModel.showAgentPanel) {
+                AgentChatPanelView(
+                    pageTitle: activePageTitle,
+                    pageSubtitle: activePageSubtitle
+                )
+                .browserSheetPresentation()
+            }
             .sheet(item: $viewModel.pendingDownload) { pendingDownload in
                 DownloadConfirmationSheet(
                     pendingDownload: pendingDownload,
@@ -67,6 +74,14 @@ struct BrowserSheets: ViewModifier {
                 )
                 .browserSheetPresentation()
             }
+    }
+
+    private var activePageTitle: String {
+        viewModel.activeTab?.displayTitle ?? "New Tab"
+    }
+
+    private var activePageSubtitle: String {
+        viewModel.activeTab?.displayURL?.displayHost ?? "Ready for browsing tasks"
     }
 }
 
