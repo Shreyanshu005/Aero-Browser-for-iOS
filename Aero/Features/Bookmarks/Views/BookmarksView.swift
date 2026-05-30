@@ -1,51 +1,31 @@
-
-
-
-
-
-
-
 import SwiftUI
+import SwiftData
 
 struct BookmarksView: View {
     @Bindable var viewModel: BrowserViewModel
     @State private var showingAddSheet = false
     @Environment(\.dismiss) private var dismiss
 
+    @Query(sort: \FavoriteItem.title) private var favorites: [FavoriteItem]
+
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.favoritesStore.favorites.isEmpty {
+                if favorites.isEmpty {
                     ContentUnavailableView("No Bookmarks", systemImage: "bookmark", description: Text("Save your favorite pages here"))
                 } else {
                     List {
-                        ForEach(viewModel.favoritesStore.favorites) { bookmark in
+                        ForEach(favorites) { bookmark in
                             Button {
                                 viewModel.tabManager.loadInActiveTab(url: bookmark.url)
                                 dismiss()
                             } label: {
-                                Label {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(bookmark.title)
-                                            .foregroundStyle(Color(UIColor.label))
-                                            .lineLimit(1)
-                                        Text(bookmark.url.displayHost ?? "")
-                                            .font(.caption)
-                                            .foregroundStyle(Color(UIColor.secondaryLabel))
-                                    }
-                                } icon: {
-                                    AsyncImage(url: bookmark.url.faviconURL) { image in
-                                        image.resizable().aspectRatio(contentMode: .fit)
-                                    } placeholder: {
-                                        Image(systemName: "globe")
-                                    }
-                                    .frame(width: 20, height: 20)
-                                }
+                                BookmarkRowView(bookmark: bookmark)
                             }
                         }
                         .onDelete { indexSet in
                             for index in indexSet {
-                                viewModel.favoritesStore.remove(id: viewModel.favoritesStore.favorites[index].id)
+                                viewModel.favoritesStore.remove(id: favorites[index].id)
                             }
                         }
                     }
@@ -69,7 +49,29 @@ struct BookmarksView: View {
     }
 }
 
+struct BookmarkRowView: View {
+    let bookmark: FavoriteItem
 
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(bookmark.title)
+                    .foregroundStyle(Color(UIColor.label))
+                    .lineLimit(1)
+                Text(bookmark.url.displayHost ?? "")
+                    .font(.caption)
+                    .foregroundStyle(Color(UIColor.secondaryLabel))
+            }
+        } icon: {
+            AsyncImage(url: bookmark.url.faviconURL) { image in
+                image.resizable().aspectRatio(contentMode: .fit)
+            } placeholder: {
+                Image(systemName: "globe")
+            }
+            .frame(width: 20, height: 20)
+        }
+    }
+}
 
 struct AddBookmarkSheet: View {
     @Bindable var viewModel: BrowserViewModel

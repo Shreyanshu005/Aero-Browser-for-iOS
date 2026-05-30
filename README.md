@@ -14,6 +14,34 @@ The project explores modern iOS design patterns and browser architecture using A
   <img src="https://i.ibb.co/TBbKC9Mx/IMG-5124.png" width="180" />
 </p>
 
+## ✨ High-Performance Features
+
+### 🧩 Intelligent Navigation
+- **Bottom-Aligned Smart Bar**: A unified interaction point for URLs and search, designed for effortless one-handed use.
+- **Dynamic Controls**: Haptic-enabled toolbar that adapts to your browsing state.
+- **Seamless Gestures**: Native back/forward navigation gestures integrated with custom WebKit coordination.
+
+### 🗂 Advanced Tab Management
+- **Visual Grid Overview**: A high-performance tab grid with real-time snapshots.
+- **Intelligent Lifecycle**: Efficient memory management supporting up to 100 concurrent tabs.
+- **Native Navigation**: Standard iOS toolbar patterns for intuitive tab creation and switching.
+
+### 🛡 Privacy & Security
+- **Content Shield**: Integrated tracker and advertisement blocking powered by `WKContentRuleList`.
+- **Privacy Dashboard**: Real-time insights into connection security and blocked trackers.
+- **Zero-Footprint Mode**: Easily clear cookies, history, and website data with a single tap.
+
+### 📖 Productivity & Utility
+- **Optimized Reader Mode**: Distraction-free reading with configurable serif typography and adjustable font sizes.
+- **Native Find-in-Page**: Fast, highlighted search within any webpage.
+- **Background Download Manager**: Robust file downloading with progress tracking and persistent local storage.
+- **Advanced Features**: 
+  - **Biometric Private Tabs**: LocalAuthentication protected tabs.
+  - **Page Profiler**: Real-time performance profiling for web pages.
+  - **UserScripts**: Injected JavaScript engine for custom site logic.
+  - **Offline Reading**: Save pages for offline consumption.
+  - **Smart Tab Deduplication**: Automatically deduplicate identical tabs.
+
 <p align="center">
   <img src="https://i.ibb.co/LX96bwsz/IMG-5125.png" width="180" />
   <img src="https://i.ibb.co/qMZsYK2q/IMG-5126.png" width="180" />
@@ -65,12 +93,20 @@ The interface uses native iOS materials and places important controls within thu
 Aero uses a layered structure to keep the codebase organized and maintainable.
 
 | Layer | Responsibility |
-| --- | --- |
-| UI | SwiftUI based interface using native system materials |
-| Browser Engine | WebKit integration and navigation coordination |
-| State Management | Shared app state using Swift `@Observable` |
-| Storage | JSON based persistence for history and bookmarks |
-| Privacy | Content blocking and tracker filtering |
+| :--- | :--- |
+| **UI Shell** | SwiftUI views with native glassmorphic materials. |
+| **Service Layer** | Domain-specific services (`SearchService`, `NavigationService`, `PrivacyService`, `FindInPageService`). |
+| **Coordinator Layer** | Thin coordinators (`NavigationCoordinator`, `ScrollCoordinator`, `DownloadCoordinator`, `ThemeExtractor`). |
+| **State Layer** | Centralized, main-actor isolated coordination using the Swift **@Observable** macro (`BrowserViewModel`). |
+| **Data & Storage** | **SwiftData** backed persistent storage for History and Favorites with native `@Query` integration. |
+| **Performance** | **WebViewPool** for recycling and suspending WKWebViews to handle hundreds of tabs efficiently. |
+| **Advanced Features** | Custom services for PiP, Biometric Auth, UserScripts, DNS-over-HTTPS, and Offline Reading. |
+
+### Technical Highlights
+- **Target**: iOS 17.0+
+- **Framework**: SwiftUI (100% Native)
+- **Engine**: WebKit
+- **Design**: Native Apple Design Language (SF Symbols, System Materials)
 
 ---
 

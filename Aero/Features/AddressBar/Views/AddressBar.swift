@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import UIKit
 
@@ -116,14 +109,14 @@ struct AddressBar: View {
                 }
         )
         .onChange(of: viewModel.isAddressBarFocused) { _, newValue in
-            if !newValue { viewModel.clearSearchSuggestions() }
+            if !newValue { viewModel.searchService.clearSearchSuggestions() }
         }
         .onChange(of: viewModel.addressBarText) { _, newText in
-            viewModel.fetchSearchSuggestions(for: newText)
+            viewModel.searchService.fetchSearchSuggestions(for: newText, isFocused: viewModel.isAddressBarFocused)
         }
         .onAppear {
             if viewModel.isAddressBarFocused {
-                viewModel.fetchSearchSuggestions(for: viewModel.addressBarText)
+                viewModel.searchService.fetchSearchSuggestions(for: viewModel.addressBarText, isFocused: viewModel.isAddressBarFocused)
             }
         }
         .animation(AeroAnimation.quick, value: viewModel.isAddressBarFocused)
@@ -136,7 +129,7 @@ struct AddressBar: View {
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 viewModel.addressBarText = ""
-                viewModel.clearSearchSuggestions()
+                viewModel.searchService.clearSearchSuggestions()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
@@ -222,7 +215,7 @@ struct AddressBar: View {
     }
 
     private func shareCurrentPage() {
-        guard let url = viewModel.shareURL() else { return }
+        guard let url = viewModel.activeTab?.url else { return }
         SharePresenter.present(items: [url])
     }
 }

@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 
 struct FindInPageBar: View {
@@ -44,7 +37,6 @@ struct FindInPageBar: View {
             .padding(.vertical, AeroSpacing.sm)
             .background(AeroColor.backgroundElevated, in: RoundedRectangle(cornerRadius: AeroRadius.sm))
 
-
             Button { findPrevious() } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 14, weight: .semibold))
@@ -58,7 +50,6 @@ struct FindInPageBar: View {
                     .foregroundStyle(totalMatches > 0 ? AeroColor.textPrimary : AeroColor.textTertiary)
             }
             .disabled(totalMatches == 0)
-
 
             Button("Done") {
                 clearSearch()
@@ -84,7 +75,6 @@ struct FindInPageBar: View {
         window.find('\(query.replacingOccurrences(of: "'", with: "\\'"))', false, false, true, false, true, false)
         """
         webView.evaluateJavaScript(js) { _, _ in }
-
 
         let countJS = """
         (function() {

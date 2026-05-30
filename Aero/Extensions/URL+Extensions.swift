@@ -9,22 +9,18 @@ extension URL {
         return host
     }
 
-
     var isSecure: Bool {
         self.scheme?.lowercased() == "https"
     }
-
 
     var faviconURL: URL? {
         guard let host = self.host else { return nil }
         return URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=64")
     }
 
-
     var shortDisplayString: String {
         displayHost ?? absoluteString
     }
-
 
     var isInternalPage: Bool {
         scheme == "about" || scheme == "aero"

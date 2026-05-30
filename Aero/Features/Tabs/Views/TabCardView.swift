@@ -77,8 +77,8 @@ struct TabCardView: View {
             GeometryReader { geo in
                 Image(uiImage: snapshot)
                     .resizable()
-                    .aspectRatio(geo.size.width / max(geo.size.height, 1), contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
                     .clipped()
             }
         } else if let webView = tab.webView {

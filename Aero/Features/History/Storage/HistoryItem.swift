@@ -1,10 +1,13 @@
 import Foundation
 
-struct HistoryItem: Identifiable, Codable, Hashable {
-    let id: UUID
-    let url: URL
-    let title: String
-    let visitDate: Date
+import SwiftData
+
+@Model
+final class HistoryItem: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
+    var url: URL
+    var title: String
+    var visitDate: Date
 
     init(url: URL, title: String, visitDate: Date = Date()) {
         self.id = UUID()
@@ -12,24 +15,43 @@ struct HistoryItem: Identifiable, Codable, Hashable {
         self.title = title.isEmpty ? url.displayHost ?? url.absoluteString : title
         self.visitDate = visitDate
     }
+}
 
+enum HistoryItemFormatter {
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, MMM d"
+        return f
+    }()
 
-    var dayKey: String {
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    static func dayKey(for item: HistoryItem) -> String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(visitDate) {
+        if calendar.isDateInToday(item.visitDate) {
             return "Today"
-        } else if calendar.isDateInYesterday(visitDate) {
+        } else if calendar.isDateInYesterday(item.visitDate) {
             return "Yesterday"
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, MMM d"
-            return formatter.string(from: visitDate)
+            return dayFormatter.string(from: item.visitDate)
         }
     }
 
+    static func timeString(for item: HistoryItem) -> String {
+        timeFormatter.string(from: item.visitDate)
+    }
+}
+
+extension HistoryItem {
+    var dayKey: String {
+        HistoryItemFormatter.dayKey(for: self)
+    }
+
     var timeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: visitDate)
+        HistoryItemFormatter.timeString(for: self)
     }
 }

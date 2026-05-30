@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import SwiftUI
 import PhotosUI
 import UIKit
@@ -94,10 +87,8 @@ struct SettingsView: View {
                     }
 
                     Button("Clear Cookies & Data", role: .destructive) {
-                        let dataStore = WKWebsiteDataStore.default()
-                        let types = WKWebsiteDataStore.allWebsiteDataTypes()
-                        dataStore.fetchDataRecords(ofTypes: types) { records in
-                            dataStore.removeData(ofTypes: types, for: records) {}
+                        Task {
+                            await PrivacyService.clearAllWebsiteData()
                         }
                     }
                 }

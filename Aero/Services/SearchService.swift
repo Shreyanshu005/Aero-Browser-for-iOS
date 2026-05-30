@@ -1,26 +1,28 @@
 import Foundation
 
-extension BrowserViewModel {
-    func fetchSearchSuggestions(for query: String) {
+@Observable
+final class SearchService {
+    var searchSuggestions: [String] = []
+    var recentSearches: [String] = UserDefaults.standard.stringArray(forKey: "recent_searches") ?? []
+    private var suggestionsTask: Task<Void, Never>?
+
+    func fetchSearchSuggestions(for query: String, isFocused: Bool) {
         suggestionsTask?.cancel()
         updateSuggestions(for: query)
 
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard isAddressBarFocused else {
+        guard isFocused else {
             searchSuggestions = []
             return
         }
 
-        // Empty query: show recents.
         guard !normalizedQuery.isEmpty else {
             searchSuggestions = recentSearches
             return
         }
 
-        let recentMatches = SearchSuggestionComposer.recentMatches(query: normalizedQuery, recentSearches: recentSearches)
-        searchSuggestions = recentMatches
+        searchSuggestions = SearchSuggestionComposer.recentMatches(query: normalizedQuery, recentSearches: recentSearches)
 
-        // If the user is typing, keep the overlay alive with the last results while we debounce.
         suggestionsTask = Task {
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled else { return }
@@ -44,13 +46,16 @@ extension BrowserViewModel {
         clearSuggestions()
     }
 
-    func navigateToSearchSuggestion(_ suggestion: String) {
-        addressBarText = suggestion
-        submitAddressBar()
-    }
+    func addRecentSearch(_ query: String) {
+        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
 
-    func fillAddressBar(with suggestion: String) {
-        addressBarText = suggestion
+        recentSearches.removeAll { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
+        recentSearches.insert(cleaned, at: 0)
+        if recentSearches.count > 20 {
+            recentSearches = Array(recentSearches.prefix(20))
+        }
+        UserDefaults.standard.set(recentSearches, forKey: "recent_searches")
     }
 
     func updateSuggestions(for query: String) {

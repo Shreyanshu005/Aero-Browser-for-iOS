@@ -19,11 +19,9 @@ struct WebViewRepresentable: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
 
-
         context.coordinator.observeWebView(webView)
         configureAppearance(for: webView)
         configureScrollInsets(for: webView)
-
 
         if let url = tab.url {
             webView.load(URLRequest(url: url))
@@ -95,8 +93,6 @@ struct WebViewRepresentable: UIViewRepresentable {
         }
     }
 }
-
-
 
 enum NavigationEvent {
     case didStartLoading

@@ -45,7 +45,6 @@ struct BrowserChromeController {
             return
         }
 
-        // Avoid jittery expand/collapse when the user is bouncing at the bottom.
         guard !metrics.isNearBottom else {
             lastOffsetY = metrics.offsetY
             accumulatedDownScroll = 0

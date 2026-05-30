@@ -1,17 +1,14 @@
-
-
-
-
-
-
-
 import Foundation
-import Observation
+import SwiftData
+import os
 
-struct FavoriteItem: Identifiable, Codable, Hashable {
-    let id: UUID
-    let title: String
-    let url: URL
+private let logger = Logger(subsystem: "com.aero.browser", category: "FavoritesStore")
+
+@Model
+final class FavoriteItem: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var url: URL
 
     init(title: String, url: URL) {
         self.id = UUID()
@@ -26,38 +23,35 @@ struct FavoriteItem: Identifiable, Codable, Hashable {
 
 @Observable
 final class FavoritesStore {
-    private(set) var favorites: [FavoriteItem] = []
-    private let fileURL: URL
+    private let context: ModelContext
 
-    init(fileURL: URL? = nil) {
-        if let fileURL {
-            self.fileURL = fileURL
-        } else {
-            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            self.fileURL = docs.appendingPathComponent("aero_favorites.json")
-        }
-        loadFromDisk()
+    @MainActor
+    init() {
+        self.context = StorageProvider.shared.container.mainContext
 
-        if favorites.isEmpty {
+        let fetchDescriptor = FetchDescriptor<FavoriteItem>()
+        if let count = try? context.fetchCount(fetchDescriptor), count == 0 {
             seedDefaults()
         }
     }
 
-
-
+    @MainActor
     func add(title: String, url: URL) {
         let item = FavoriteItem(title: title, url: url)
-        favorites.append(item)
-        saveToDisk()
+        context.insert(item)
+        try? context.save()
     }
 
+    @MainActor
     func remove(id: UUID) {
-        favorites.removeAll { $0.id == id }
-        saveToDisk()
+        let fetchDescriptor = FetchDescriptor<FavoriteItem>(predicate: #Predicate { $0.id == id })
+        if let items = try? context.fetch(fetchDescriptor), let item = items.first {
+            context.delete(item)
+            try? context.save()
+        }
     }
 
-
-
+    @MainActor
     private func seedDefaults() {
         let defaults: [(String, String)] = [
             ("Google",   "https://www.google.com"),
@@ -70,30 +64,10 @@ final class FavoritesStore {
 
         for (title, urlString) in defaults {
             if let url = URL(string: urlString) {
-                favorites.append(FavoriteItem(title: title, url: url))
+                let item = FavoriteItem(title: title, url: url)
+                context.insert(item)
             }
         }
-        saveToDisk()
-    }
-
-
-
-    private func saveToDisk() {
-        do {
-            let data = try JSONEncoder().encode(favorites)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            print("[Aero] Failed to save favorites: \(error)")
-        }
-    }
-
-    private func loadFromDisk() {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        do {
-            let data = try Data(contentsOf: fileURL)
-            favorites = try JSONDecoder().decode([FavoriteItem].self, from: data)
-        } catch {
-            print("[Aero] Failed to load favorites: \(error)")
-        }
+        try? context.save()
     }
 }

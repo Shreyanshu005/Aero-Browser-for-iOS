@@ -1,47 +1,36 @@
-
-
-
-
-
-
-
 import WebKit
 
 final class ContentBlocker {
     private var ruleList: WKContentRuleList?
 
-
-    private let blockRulesJSON = #"""
+    private let blockRulesJSON = """
     [
         {
-            "trigger": { "url-filter": ".*(doubleclick\\.net|googlesyndication\\.com|googleadservices\\.com).*", "resource-type": ["script", "image"] },
+            "trigger": { "url-filter": ".*", "resource-type": ["script"], "if-domain": ["*doubleclick.net", "*googlesyndication.com", "*googleadservices.com"] },
             "action": { "type": "block" }
         },
         {
-            "trigger": { "url-filter": ".*(facebook\\.net|connect\\.facebook\\.net|facebook\\.com/tr).*" },
+            "trigger": { "url-filter": ".*", "if-domain": ["*facebook.net", "*facebook.com/tr*", "*connect.facebook.net"] },
             "action": { "type": "block" }
         },
         {
-            "trigger": { "url-filter": ".*(analytics\\.google\\.com|google-analytics\\.com).*", "resource-type": ["script", "image"] },
+            "trigger": { "url-filter": ".*", "if-domain": ["*analytics.google.com", "*google-analytics.com"] },
             "action": { "type": "block" }
         },
         {
-            "trigger": { "url-filter": ".*\\.ads\\..*" },
+            "trigger": { "url-filter": ".*\\\\.ads\\\\..*" },
             "action": { "type": "block" }
         }
     ]
-    """#
+    """
 
-    @discardableResult
-    func compileRules() async -> Bool {
+    func compileRules() async {
         do {
             let list = try await WKContentRuleListStore.default()
                 .compileContentRuleList(forIdentifier: "AeroBlocker", encodedContentRuleList: blockRulesJSON)
             self.ruleList = list
-            return true
         } catch {
             print("[Aero] Content blocker compile error: \(error)")
-            return false
         }
     }
 

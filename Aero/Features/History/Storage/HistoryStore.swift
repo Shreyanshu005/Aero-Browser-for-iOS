@@ -1,88 +1,40 @@
-
-
-
-
-
-
-
 import Foundation
-import Observation
+import SwiftData
+import os
+
+private let logger = Logger(subsystem: "com.aero.browser", category: "HistoryStore")
 
 @Observable
 final class HistoryStore {
-    private(set) var items: [HistoryItem] = []
-    private let fileURL: URL
+    private let context: ModelContext
 
-    init(fileURL: URL? = nil) {
-        if let fileURL {
-            self.fileURL = fileURL
-        } else {
-            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            self.fileURL = docs.appendingPathComponent("aero_history.json")
-        }
-        loadFromDisk()
+    @MainActor
+    init() {
+        self.context = StorageProvider.shared.container.mainContext
     }
 
-
-
+    @MainActor
     func addVisit(url: URL, title: String) {
         let item = HistoryItem(url: url, title: title)
-        items.insert(item, at: 0)
+        context.insert(item)
+        try? context.save()
 
-
-        if items.count > 5000 {
-            items = Array(items.prefix(5000))
+        let fetchDescriptor = FetchDescriptor<HistoryItem>()
+        if let count = try? context.fetchCount(fetchDescriptor), count > 5000 {
+            var oldestFetch = FetchDescriptor<HistoryItem>(sortBy: [SortDescriptor(\.visitDate, order: .forward)])
+            oldestFetch.fetchLimit = count - 5000
+            if let oldest = try? context.fetch(oldestFetch) {
+                for item in oldest {
+                    context.delete(item)
+                }
+                try? context.save()
+            }
         }
-
-        saveToDisk()
     }
 
+    @MainActor
     func clearHistory() {
-        items.removeAll()
-        saveToDisk()
-    }
-
-    func search(query: String) -> [HistoryItem] {
-        let lowered = query.lowercased()
-        return items.filter { item in
-            item.title.lowercased().contains(lowered) ||
-            item.url.absoluteString.lowercased().contains(lowered)
-        }
-    }
-
-
-    func groupedByDay() -> [(key: String, items: [HistoryItem])] {
-        let grouped = Dictionary(grouping: items, by: { $0.dayKey })
-        let sortedKeys = grouped.keys.sorted { k1, k2 in
-            if k1 == "Today" { return true }
-            if k2 == "Today" { return false }
-            if k1 == "Yesterday" { return true }
-            if k2 == "Yesterday" { return false }
-            return k1 > k2
-        }
-        return sortedKeys.map { key in
-            (key: key, items: grouped[key] ?? [])
-        }
-    }
-
-
-
-    private func saveToDisk() {
-        do {
-            let data = try JSONEncoder().encode(items)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            print("[Aero] Failed to save history: \(error)")
-        }
-    }
-
-    private func loadFromDisk() {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        do {
-            let data = try Data(contentsOf: fileURL)
-            items = try JSONDecoder().decode([HistoryItem].self, from: data)
-        } catch {
-            print("[Aero] Failed to load history: \(error)")
-        }
+        try? context.delete(model: HistoryItem.self)
+        try? context.save()
     }
 }

@@ -55,6 +55,18 @@ struct MenuSheet: View {
                             }
                             dismiss()
                         }
+                        menuButton("square.and.arrow.down", "Save for Offline") {
+                            if let url = viewModel.activeTab?.url, let title = viewModel.activeTab?.title {
+                                viewModel.offlineService.addItem(title: title, url: url, excerpt: "Saved for offline reading")
+                            }
+                            dismiss()
+                        }
+                        menuButton("speedometer", "Profile Page") {
+                            if let webView = viewModel.activeTab?.webView {
+                                Task { await viewModel.pageProfiler.profile(webView: webView) }
+                            }
+                            dismiss()
+                        }
                         menuButton(desktopToggleIcon, desktopToggleTitle) {
                             if isDesktopSiteEnabled {
                                 viewModel.activeTab?.webView?.customUserAgent = nil
