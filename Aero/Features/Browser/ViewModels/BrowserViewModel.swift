@@ -129,7 +129,19 @@ final class BrowserViewModel {
             url = searchURL
         }
 
-        tabManager.loadInActiveTab(url: url)
+        if let duplicate = TabDeduplicationService.findDuplicate(url: url, in: tabManager.tabs, excluding: activeTab?.id) {
+            let previousTabId = activeTab?.id
+            let previousTabUrl = activeTab?.url
+            
+            tabManager.switchToTab(id: duplicate.id)
+            
+            if previousTabUrl == nil, let id = previousTabId {
+                tabManager.closeTab(id: id)
+            }
+        } else {
+            tabManager.loadInActiveTab(url: url)
+        }
+
         isAddressBarFocused = false
         searchService.clearSearchSuggestions()
         chromeController.expand()

@@ -6,19 +6,23 @@ struct BottomBrowserChromeView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            expandedChrome
-                .opacity(viewModel.chromeMode == .expanded ? 1 : 0)
-                .offset(y: viewModel.chromeMode == .expanded ? 0 : 90)
-                .allowsHitTesting(viewModel.chromeMode == .expanded)
-
-            CompactAddressPillView(viewModel: viewModel)
-                .frame(maxWidth: 260)
-                .matchedGeometryEffect(id: "address", in: addressTransition)
-                .opacity(viewModel.chromeMode == .compact ? 1 : 0)
-                .offset(y: viewModel.chromeMode == .compact ? 0 : 24)
-                .allowsHitTesting(viewModel.chromeMode == .compact)
+            if viewModel.chromeMode == .expanded {
+                expandedChrome
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                    .zIndex(1)
+            } else {
+                CompactAddressPillView(viewModel: viewModel)
+                    .frame(maxWidth: 260)
+                    .matchedGeometryEffect(id: "address", in: addressTransition)
+                    .padding(.bottom, AeroSpacing.sm)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .zIndex(2)
+            }
         }
-        .animation(AeroAnimation.smooth, value: viewModel.chromeMode)
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.chromeMode)
     }
 
     private var expandedChrome: some View {
