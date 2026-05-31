@@ -14,7 +14,7 @@ extension BrowserViewModel {
             descriptor = try AgentProviderResolver().descriptor(for: config)
         } catch {
             // Fallback to a default if it fails (e.g. missing API key)
-            descriptor = AgentResolvedProviderDescriptor(providerID: .gemini, model: "gemini-2.0-flash", modelString: "gemini/gemini-2.0-flash", apiKey: nil)
+            descriptor = AgentResolvedProviderDescriptor(providerID: .groq, model: "llama-3.3-70b-versatile", modelString: "groq/llama-3.3-70b-versatile", apiKey: nil, baseURL: "https://api.groq.com/openai/v1")
         }
         
         let client = AgentNetworkClient(descriptor: descriptor)

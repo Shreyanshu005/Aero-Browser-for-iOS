@@ -82,6 +82,13 @@ struct AgentNetworkClient {
     
     private func generateOpenAI(prompt: String) async throws -> String {
         var baseURLString = descriptor.baseURL ?? "https://api.openai.com/v1"
+        if descriptor.providerID == .groq && descriptor.baseURL == nil {
+            baseURLString = "https://api.groq.com/openai/v1"
+        }
+        if descriptor.providerID == .openRouter && descriptor.baseURL == nil {
+            baseURLString = "https://openrouter.ai/api/v1"
+        }
+        
         if baseURLString.hasSuffix("/") { baseURLString.removeLast() }
         
         guard let url = URL(string: "\(baseURLString)/chat/completions") else { throw AgentNetworkError.invalidURL }

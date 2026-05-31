@@ -68,6 +68,12 @@ enum AgentProviderID: String, CaseIterable, Codable, Hashable, Identifiable {
         switch self {
         case .ollama:
             return "http://localhost:11434/v1"
+        case .groq:
+            return "https://api.groq.com/openai/v1"
+        case .openRouter:
+            return "https://openrouter.ai/api/v1"
+        case .mistral:
+            return "https://api.mistral.ai/v1"
         default:
             return nil
         }
@@ -126,7 +132,7 @@ struct AgentProviderConfiguration: Codable, Equatable {
     static let defaults = AgentProviderConfiguration()
 
     init(
-        selectedProviderID: AgentProviderID = .openAI,
+        selectedProviderID: AgentProviderID = .groq,
         settingsByProviderID: [String: AgentProviderSettings] = Self.defaultSettingsByProviderID
     ) {
         self.selectedProviderID = selectedProviderID
@@ -135,7 +141,7 @@ struct AgentProviderConfiguration: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.selectedProviderID = (try? container.decode(AgentProviderID.self, forKey: .selectedProviderID)) ?? .openAI
+        self.selectedProviderID = (try? container.decode(AgentProviderID.self, forKey: .selectedProviderID)) ?? .groq
         let decodedSettings = (try? container.decode([String: AgentProviderSettings].self, forKey: .settingsByProviderID)) ?? [:]
         self.settingsByProviderID = Self.defaultSettingsByProviderID.merging(decodedSettings) { _, decoded in decoded }
     }
