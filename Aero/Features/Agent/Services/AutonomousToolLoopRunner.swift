@@ -51,18 +51,21 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
             )
             
             var observation: AgentPageObservation?
-            for _ in 0..<5 {
+            var lastError: Error?
+            for _ in 0..<20 {
                 do {
                     observation = try await browserTools.observePage()
                     break
                 } catch {
+                    lastError = error
                     _ = try await browserTools.wait(seconds: 1.0)
                 }
             }
             
             guard let validObservation = observation else {
-                await updateStep(observeStep, status: .failed, detail: "Page not loaded or WebView missing.", eventHandler: eventHandler)
-                throw AgentNetworkError.apiError("Failed to observe page.")
+                let errorDesc = lastError?.localizedDescription ?? "unknown"
+                await updateStep(observeStep, status: .failed, detail: "Page not loaded or WebView missing. Last error: \\(errorDesc)", eventHandler: eventHandler)
+                throw AgentNetworkError.apiError("Failed to observe page after 20 seconds. Error: \\(errorDesc)")
             }
             
             await updateStep(
