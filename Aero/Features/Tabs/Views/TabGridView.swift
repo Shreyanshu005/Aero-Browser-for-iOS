@@ -32,8 +32,8 @@ struct TabGridView: View {
 
             deck
                 .opacity(appeared ? 1 : 0)
-                .padding(.top, 112)
-                .padding(.bottom, 104)
+                .padding(.top, 72)
+                .padding(.bottom, 24)
 
             topControls
                 .opacity(appeared ? 1 : 0)
@@ -58,8 +58,8 @@ struct TabGridView: View {
         GeometryReader { geo in
             let cardW = geo.size.width * 0.75
             let headerH: CGFloat = 36
-            let totalH = geo.size.height * 0.96
-            let cardH = max(240, totalH - headerH - 10)
+            let totalH = geo.size.height
+            let cardH = max(240, totalH - headerH)
             let maxOff = max(0, CGFloat(tabs.count - 1) * cardStep)
             let fraction = (offset / cardStep) - floor(offset / cardStep)
 
@@ -89,7 +89,7 @@ struct TabGridView: View {
         }
     }
 
-    private var bottomControlsClearance: CGFloat { 108 }
+    private var bottomControlsClearance: CGFloat { 84 }
 
     private struct TabCardHeaderView: View {
         let tab: Tab
@@ -145,6 +145,7 @@ struct TabGridView: View {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 viewModel.newTab()
+                viewModel.isShowingTabGrid = false
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .semibold))
