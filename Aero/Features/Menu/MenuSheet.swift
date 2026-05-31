@@ -106,7 +106,7 @@ struct MenuSheet: View {
             }
         }
         .accessibilityIdentifier("browser.menu.sheet")
-        .presentationDetents([.medium])
+        .presentationDetents([.height(520), .large])
         .presentationDragIndicator(.visible)
     }
 
@@ -148,13 +148,7 @@ struct MenuSheet: View {
     }
 
     private var menuRowBackground: some View {
-        RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
-            .fill(.regularMaterial)
-            .overlay {
-                RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
-                    .stroke(AeroColor.surfaceBorder.opacity(0.35), lineWidth: 0.5)
-            }
-            .padding(.vertical, 1)
+        Color.clear
     }
 }
 
@@ -269,14 +263,6 @@ struct MoreOptionsMenu: View {
         }
         .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-        .listRowBackground(
-            RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
-                .fill(.regularMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
-                        .stroke(AeroColor.surfaceBorder.opacity(0.35), lineWidth: 0.5)
-                }
-                .padding(.vertical, 1)
-        )
+        .listRowBackground(Color.clear)
     }
 }
