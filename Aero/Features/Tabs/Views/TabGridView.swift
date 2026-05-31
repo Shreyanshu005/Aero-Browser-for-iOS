@@ -204,24 +204,32 @@ struct TabGridView: View {
 
             Spacer()
 
-            Button { viewModel.isShowingTabGrid = false } label: {
-                Label("Done", systemImage: "checkmark")
-                    .font(.system(size: 15, weight: .semibold))
-                    .labelStyle(.titleAndIcon)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                let nextMode: BrowsingMode = viewModel.activeBrowsingMode == .standard ? .privateBrowsing : .standard
+                viewModel.switchBrowsingMode(nextMode)
+            } label: {
+                Image(systemName: viewModel.activeBrowsingMode == .standard ? BrowsingMode.privateBrowsing.systemImage : BrowsingMode.standard.systemImage)
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(minWidth: 98, minHeight: 46)
-                    .padding(.horizontal, 6)
+                    .frame(width: 54, height: 54)
                     .background {
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                            .environment(\.colorScheme, .dark)
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                            Circle()
+                                .fill(modeAccent.opacity(0.22))
+                        }
                     }
                     .overlay {
-                        Capsule()
-                            .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
+                        Circle()
+                            .strokeBorder(.white.opacity(0.20), lineWidth: 0.8)
                     }
+                    .shadow(color: modeAccent.opacity(0.22), radius: 16, y: 8)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(viewModel.activeBrowsingMode == .standard ? "Switch to Private Mode" : "Switch to Standard Mode")
         }
         .padding(.horizontal, 24)
     }
@@ -291,38 +299,11 @@ struct TabGridView: View {
                 .opacity(viewModel.canReopenLastClosedTab ? 1 : 0.4)
                 .accessibilityLabel("Reopen Last Closed Tab")
             }
-
-            Picker("Browsing Mode", selection: browsingModeSelection) {
-                ForEach(BrowsingMode.allCases) { mode in
-                    Label(mode.title, systemImage: mode.systemImage)
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .tint(modeAccent)
-            .frame(height: 38)
-            .padding(3)
-            .background {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .strokeBorder(.white.opacity(0.13), lineWidth: 0.8)
-            }
-            .environment(\.colorScheme, .dark)
         }
         .padding(.horizontal, 22)
     }
 
-    private var browsingModeSelection: Binding<BrowsingMode> {
-        Binding {
-            viewModel.activeBrowsingMode
-        } set: { mode in
-            viewModel.switchBrowsingMode(mode)
-        }
-    }
+
 
     private func horizontalPagingGesture(maxOff: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 6, coordinateSpace: .local)
