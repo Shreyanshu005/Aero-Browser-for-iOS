@@ -8,8 +8,20 @@ extension BrowserViewModel {
         }
 
         let browserTools = LiveAgentBrowserTools(target: self)
+        let config = settingsStore.loadAgentProviderConfiguration()
+        let descriptor: AgentResolvedProviderDescriptor
+        do {
+            descriptor = try AgentProviderResolver().descriptor(for: config)
+        } catch {
+            // Fallback to a default if it fails (e.g. missing API key)
+            descriptor = AgentResolvedProviderDescriptor(providerID: .gemini, model: "gemini-2.0-flash", modelString: "gemini/gemini-2.0-flash", apiKey: nil)
+        }
+        
+        let client = AgentNetworkClient(descriptor: descriptor)
+        let toolLoopRunner = AutonomousToolLoopRunner(client: client)
+        
         let engine = AgentRunEngine(
-            toolLoopRunner: LiveAgentToolLoopRunner(searchEngine: searchEngine),
+            toolLoopRunner: toolLoopRunner,
             browserTools: browserTools
         )
         browserTools.onApprovalRequested = { [weak engine] request in

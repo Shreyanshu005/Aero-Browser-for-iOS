@@ -28,7 +28,7 @@ final class BrowserViewModel {
 
 
     @ObservationIgnored
-    private let settingsStore: BrowserSettingsStoring
+    let settingsStore: BrowserSettingsStoring
     @ObservationIgnored
     var agentRunEngineStorage: AgentRunEngine?
     @ObservationIgnored

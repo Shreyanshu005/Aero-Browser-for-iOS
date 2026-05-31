@@ -34,7 +34,7 @@ struct BrowserSettings: Codable, Equatable {
     }
 }
 
-protocol BrowserSettingsStoring {
+protocol BrowserSettingsStoring: AgentProviderSettingsPersisting {
     func loadSettings() -> BrowserSettings
     func saveSettings(_ settings: BrowserSettings)
 }
