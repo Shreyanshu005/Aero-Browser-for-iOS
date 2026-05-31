@@ -51,7 +51,7 @@ enum AeroGlassStyle {
         case .toolbar:
             return (Color.black.opacity(0.08), 10, -2)
         case .control, .prominentControl:
-            return (Color.black.opacity(0.08), 6, 1)
+            return (.clear, 0, 0)
         case .scrim:
             return (Color.black.opacity(0.06), 8, 0)
         }

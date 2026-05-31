@@ -23,80 +23,7 @@ struct MenuSheet: View {
                     .accessibilityIdentifier("browser.menu.agent")
                 }
 
-                if viewModel.activeTab?.url != nil {
-                    Section {
-                        menuButton("magnifyingglass", "Find in Page") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showFindInPage = true
-                            }
-                        }
-                        menuButton("safari", "Open in Safari") {
-                            if let url = viewModel.activeTab?.url {
-                                UIApplication.shared.open(url)
-                            }
-                            dismiss()
-                        }
-                        menuButton("doc.plaintext", "Reader Mode") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showReaderMode = true
-                            }
-                        }
-                        menuButton("bookmark", "Add Bookmark") {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                viewModel.showAddBookmark = true
-                            }
-                        }
-                        menuButton("doc.on.doc", "Copy Link") {
-                            if let url = viewModel.activeTab?.url {
-                                UIPasteboard.general.string = url.absoluteString
-                            }
-                            dismiss()
-                        }
-                        menuButton("square.and.arrow.down", "Save for Offline") {
-                            if let url = viewModel.activeTab?.url, let title = viewModel.activeTab?.title {
-                                viewModel.offlineService.addItem(title: title, url: url, excerpt: "Saved for offline reading")
-                            }
-                            dismiss()
-                        }
-                        menuButton("speedometer", "Profile Page") {
-                            if let webView = viewModel.activeTab?.webView {
-                                Task { await viewModel.pageProfiler.profile(webView: webView) }
-                            }
-                            dismiss()
-                        }
-                        menuButton(desktopToggleIcon, desktopToggleTitle) {
-                            if isDesktopSiteEnabled {
-                                viewModel.activeTab?.webView?.customUserAgent = nil
-                            } else {
-                                viewModel.activeTab?.webView?.customUserAgent = Self.desktopUserAgent
-                            }
-                            viewModel.reload()
-                            dismiss()
-                        }
-                    }
-                }
-
-
-                if viewModel.canReopenLastClosedTab {
-                    Section {
-                        menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
-                            viewModel.reopenLastClosedTab()
-                            dismiss()
-                        }
-                    }
-                }
-
-
                 Section {
-                    menuButton("eye.slash", "New Private Tab") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            viewModel.newPrivateTab()
-                        }
-                    }
                     menuButton("clock", "History") {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -109,20 +36,26 @@ struct MenuSheet: View {
                             viewModel.showBookmarks = true
                         }
                     }
-                    menuButton("arrow.down.circle", "Downloads") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showDownloads = true
+                    if viewModel.activeTab?.url != nil {
+                        menuButton("bookmark", "Add Bookmark") {
+                            dismiss()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                viewModel.showAddBookmark = true
+                            }
                         }
                     }
                 }
 
-
                 Section {
-                    menuButton("shield.lefthalf.filled", "Privacy") {
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.showTrackerReceipt = true
+                    if viewModel.activeTab?.url != nil {
+                        menuButton(desktopToggleIcon, desktopToggleTitle) {
+                            if isDesktopSiteEnabled {
+                                viewModel.activeTab?.webView?.customUserAgent = nil
+                            } else {
+                                viewModel.activeTab?.webView?.customUserAgent = Self.desktopUserAgent
+                            }
+                            viewModel.reload()
+                            dismiss()
                         }
                     }
                     menuButton("gearshape", "Settings") {
@@ -132,6 +65,30 @@ struct MenuSheet: View {
                         }
                     }
                     .accessibilityIdentifier("browser.menu.settings")
+                }
+                
+                Section {
+                    NavigationLink {
+                        MoreOptionsMenu(viewModel: viewModel)
+                    } label: {
+                        Label {
+                            Text("More Options")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(AeroColor.textPrimary)
+                        } icon: {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 17, weight: .semibold))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(AeroColor.textPrimary)
+                                .frame(width: 30, height: 30)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.sm, style: .continuous))
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .padding(.vertical, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                    .listRowBackground(menuRowBackground)
                 }
             }
             .accessibilityIdentifier("browser.menu.list")
@@ -198,5 +155,128 @@ struct MenuSheet: View {
                     .stroke(AeroColor.surfaceBorder.opacity(0.35), lineWidth: 0.5)
             }
             .padding(.vertical, 1)
+    }
+}
+
+struct MoreOptionsMenu: View {
+    @Bindable var viewModel: BrowserViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            if viewModel.activeTab?.url != nil {
+                Section("Page Options") {
+                    menuButton("magnifyingglass", "Find in Page") {
+                        dismissMenu()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            viewModel.showFindInPage = true
+                        }
+                    }
+                    menuButton("doc.plaintext", "Reader Mode") {
+                        dismissMenu()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            viewModel.showReaderMode = true
+                        }
+                    }
+                    menuButton("doc.on.doc", "Copy Link") {
+                        if let url = viewModel.activeTab?.url {
+                            UIPasteboard.general.string = url.absoluteString
+                        }
+                        dismissMenu()
+                    }
+                    menuButton("square.and.arrow.down", "Save for Offline") {
+                        if let url = viewModel.activeTab?.url, let title = viewModel.activeTab?.title {
+                            viewModel.offlineService.addItem(title: title, url: url, excerpt: "Saved for offline reading")
+                        }
+                        dismissMenu()
+                    }
+                    menuButton("safari", "Open in Safari") {
+                        if let url = viewModel.activeTab?.url {
+                            UIApplication.shared.open(url)
+                        }
+                        dismissMenu()
+                    }
+                }
+            }
+
+            Section("Browsing") {
+                if viewModel.canReopenLastClosedTab {
+                    menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
+                        viewModel.reopenLastClosedTab()
+                        dismissMenu()
+                    }
+                }
+                menuButton("eye.slash", "New Private Tab") {
+                    dismissMenu()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        viewModel.newPrivateTab()
+                    }
+                }
+                menuButton("arrow.down.circle", "Downloads") {
+                    dismissMenu()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        viewModel.showDownloads = true
+                    }
+                }
+            }
+
+            Section("Advanced") {
+                menuButton("shield.lefthalf.filled", "Privacy Report") {
+                    dismissMenu()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        viewModel.showTrackerReceipt = true
+                    }
+                }
+                if viewModel.activeTab?.url != nil {
+                    menuButton("speedometer", "Profile Page") {
+                        if let webView = viewModel.activeTab?.webView {
+                            Task { await viewModel.pageProfiler.profile(webView: webView) }
+                        }
+                        dismissMenu()
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .browserSheetListBackground()
+        .navigationTitle("More Options")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func dismissMenu() {
+        viewModel.showMenu = false
+    }
+
+    @ViewBuilder
+    private func menuButton(_ icon: String, _ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label {
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(AeroColor.textPrimary)
+            } icon: {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(AeroColor.textPrimary)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AeroRadius.sm, style: .continuous))
+            }
+            .labelStyle(.titleAndIcon)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+        .listRowBackground(
+            RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
+                        .stroke(AeroColor.surfaceBorder.opacity(0.35), lineWidth: 0.5)
+                }
+                .padding(.vertical, 1)
+        )
     }
 }
