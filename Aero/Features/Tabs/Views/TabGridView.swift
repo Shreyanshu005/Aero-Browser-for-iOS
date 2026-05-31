@@ -24,11 +24,7 @@ struct TabGridView: View {
     private let maxCards = 3
     private let controlHeight: CGFloat = 46
 
-    private var modeAccent: Color {
-        viewModel.activeBrowsingMode == .privateBrowsing
-            ? Color(red: 0.78, green: 0.46, blue: 1.0)
-            : Color(red: 0.34, green: 0.82, blue: 0.92)
-    }
+
 
     var body: some View {
         ZStack {
@@ -138,40 +134,10 @@ struct TabGridView: View {
     }
 
     private var background: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.06, green: 0.07, blue: 0.08),
-                    Color(red: 0.015, green: 0.018, blue: 0.022),
-                    Color.black
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .environment(\.colorScheme, .dark)
             .ignoresSafeArea()
-
-            Rectangle()
-                .fill(.regularMaterial)
-                .environment(\.colorScheme, .dark)
-                .ignoresSafeArea()
-                .opacity(0.34)
-
-            LinearGradient(
-                colors: [
-                    modeAccent.opacity(viewModel.activeBrowsingMode == .privateBrowsing ? 0.24 : 0.18),
-                    Color.white.opacity(0.055),
-                    Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            .blur(radius: 36)
-
-            Color.black
-                .opacity(viewModel.activeBrowsingMode == .privateBrowsing ? 0.28 : 0.16)
-                .ignoresSafeArea()
-        }
     }
 
     private var bottomControls: some View {
@@ -185,19 +151,14 @@ struct TabGridView: View {
                     .foregroundStyle(.white)
                     .frame(width: 54, height: 54)
                     .background {
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .environment(\.colorScheme, .dark)
-                            Circle()
-                                .fill(modeAccent.opacity(0.22))
-                        }
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .environment(\.colorScheme, .dark)
                     }
                     .overlay {
                         Circle()
                             .strokeBorder(.white.opacity(0.20), lineWidth: 0.8)
                     }
-                    .shadow(color: modeAccent.opacity(0.22), radius: 16, y: 8)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("New Tab")
@@ -214,19 +175,14 @@ struct TabGridView: View {
                     .foregroundStyle(.white)
                     .frame(width: 54, height: 54)
                     .background {
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .environment(\.colorScheme, .dark)
-                            Circle()
-                                .fill(modeAccent.opacity(0.22))
-                        }
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .environment(\.colorScheme, .dark)
                     }
                     .overlay {
                         Circle()
                             .strokeBorder(.white.opacity(0.20), lineWidth: 0.8)
                     }
-                    .shadow(color: modeAccent.opacity(0.22), radius: 16, y: 8)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(viewModel.activeBrowsingMode == .standard ? "Switch to Private Mode" : "Switch to Standard Mode")
