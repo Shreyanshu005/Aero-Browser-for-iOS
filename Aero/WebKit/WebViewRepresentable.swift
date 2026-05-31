@@ -33,13 +33,6 @@ struct WebViewRepresentable: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         configureAppearance(for: webView)
         configureScrollInsets(for: webView)
-
-        guard let url = tab.url else { return }
-
-        let currentURL = webView.url
-        if currentURL != url && !tab.isLoading {
-            webView.load(URLRequest(url: url))
-        }
     }
 
     func makeCoordinator() -> WebViewCoordinator {

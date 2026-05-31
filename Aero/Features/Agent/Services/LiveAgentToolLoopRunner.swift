@@ -25,7 +25,7 @@ struct LiveAgentToolLoopRunner: AgentToolLoopRunning {
     ) async throws -> AgentToolLoopResult {
         try Task.checkCancellation()
 
-        let resolution = resolver.resolve(request.prompt, searchEngine: searchEngine)
+        let resolution = resolver.resolve(request.prompt, currentURL: request.currentURL, searchEngine: searchEngine)
         let resolveStep = await startStep(
             title: "Resolve destination",
             detail: "Routing \"\(request.prompt)\".",

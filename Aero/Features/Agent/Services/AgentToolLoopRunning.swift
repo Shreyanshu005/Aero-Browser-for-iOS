@@ -3,10 +3,12 @@ import Foundation
 struct AgentToolLoopRequest: Equatable {
     let runID: UUID
     var prompt: String
+    var currentURL: URL?
 
-    init(runID: UUID, prompt: String) {
+    init(runID: UUID, prompt: String, currentURL: URL? = nil) {
         self.runID = runID
         self.prompt = prompt
+        self.currentURL = currentURL
     }
 }
 

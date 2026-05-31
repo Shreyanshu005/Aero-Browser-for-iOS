@@ -5,7 +5,9 @@ struct SearchSuggestionsOverlayView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {

@@ -33,7 +33,7 @@ final class AgentRunEngine {
     }
 
     @discardableResult
-    func start(prompt: String) -> UUID? {
+    func start(prompt: String, currentURL: URL? = nil) -> UUID? {
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPrompt.isEmpty else { return nil }
 
@@ -58,7 +58,7 @@ final class AgentRunEngine {
         )
         activeRunID = runID
 
-        let request = AgentToolLoopRequest(runID: runID, prompt: trimmedPrompt)
+        let request = AgentToolLoopRequest(runID: runID, prompt: trimmedPrompt, currentURL: currentURL)
         activeTask = Task { [weak self, toolLoopRunner, browserTools] in
             do {
                 let result = try await toolLoopRunner.run(

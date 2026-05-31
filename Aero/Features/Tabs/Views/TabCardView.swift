@@ -35,15 +35,6 @@ struct TabCardView: View {
         snapshotArea
         .background(Color(uiColor: tab.pageBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                .strokeBorder(
-                    isActive ? accentColor.opacity(0.68) : Color.white.opacity(tab.isPrivate ? 0.18 : 0.10),
-                    lineWidth: isActive ? 1.2 : 0.7
-                )
-        )
-        .shadow(color: accentColor.opacity(isActive ? 0.18 : 0), radius: 24, y: 10)
-        .shadow(color: .black.opacity(isActive ? 0.56 : 0.44), radius: isActive ? 30 : 22, y: 14)
     }
 
     private var snapshotArea: some View {

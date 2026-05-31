@@ -27,7 +27,7 @@ extension BrowserViewModel {
     @MainActor
     func startAgentRun(prompt: String) {
         agentBrowserToolsStorage?.cancelPendingApprovals()
-        _ = agentRunEngine.start(prompt: prompt)
+        _ = agentRunEngine.start(prompt: prompt, currentURL: activeTab?.url)
     }
 
     @MainActor

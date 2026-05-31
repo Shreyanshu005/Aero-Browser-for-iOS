@@ -17,8 +17,14 @@ struct AgentSiteResolution: Equatable {
 }
 
 struct AgentSiteResolver {
-    func resolve(_ task: String, searchEngine: SearchEngine = .google) -> AgentSiteResolution {
+    func resolve(_ task: String, currentURL: URL? = nil, searchEngine: SearchEngine = .google) -> AgentSiteResolution {
         let query = Self.cleanWhitespace(task)
+
+        let lowercased = query.lowercased()
+        if let currentURL = currentURL,
+           (lowercased.contains("this page") || lowercased.contains("current page") || lowercased.contains("here") || lowercased.contains("summarize this") || lowercased.contains("this site") || lowercased.contains("read this") || lowercased.contains("extract")) {
+            return AgentSiteResolution(kind: .directURL, url: currentURL, query: query)
+        }
 
         if case .url(let url) = URLInput.classify(query) {
             return AgentSiteResolution(kind: .directURL, url: url, query: query)
