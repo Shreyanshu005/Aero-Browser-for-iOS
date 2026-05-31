@@ -50,12 +50,25 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                 eventHandler: eventHandler
             )
             
-            let observation = try await browserTools.observePage()
+            var observation: AgentPageObservation?
+            for _ in 0..<5 {
+                do {
+                    observation = try await browserTools.observePage()
+                    break
+                } catch {
+                    _ = try await browserTools.wait(seconds: 1.0)
+                }
+            }
+            
+            guard let validObservation = observation else {
+                await updateStep(observeStep, status: .failed, detail: "Page not loaded or WebView missing.", eventHandler: eventHandler)
+                throw AgentNetworkError.apiError("Failed to observe page.")
+            }
             
             await updateStep(
                 observeStep,
                 status: .completed,
-                detail: "Observed \\(observation.elements.count) elements.",
+                detail: "Observed \\(validObservation.elements.count) elements.",
                 eventHandler: eventHandler
             )
             
@@ -67,7 +80,7 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
             
             let responseText: String
             do {
-                responseText = try await client.nextAction(task: request.prompt, observation: observation, history: history)
+                responseText = try await client.nextAction(task: request.prompt, observation: validObservation, history: history)
             } catch {
                 await updateStep(
                     planStep,
