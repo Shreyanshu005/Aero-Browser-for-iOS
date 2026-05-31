@@ -8,17 +8,7 @@ extension BrowserViewModel {
         }
 
         let browserTools = LiveAgentBrowserTools(target: self)
-        let config = settingsStore.loadAgentProviderConfiguration()
-        let descriptor: AgentResolvedProviderDescriptor
-        do {
-            descriptor = try AgentProviderResolver().descriptor(for: config)
-        } catch {
-            // Fallback to a default if it fails (e.g. missing API key)
-            descriptor = AgentResolvedProviderDescriptor(providerID: .groq, model: "llama-3.3-70b-versatile", modelString: "groq/llama-3.3-70b-versatile", apiKey: nil, baseURL: "https://api.groq.com/openai/v1")
-        }
-        
-        let client = AgentNetworkClient(descriptor: descriptor)
-        let toolLoopRunner = AutonomousToolLoopRunner(client: client)
+        let toolLoopRunner = AutonomousToolLoopRunner(settingsStore: settingsStore)
         
         let engine = AgentRunEngine(
             toolLoopRunner: toolLoopRunner,

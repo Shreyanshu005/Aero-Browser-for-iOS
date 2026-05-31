@@ -1,7 +1,7 @@
 import Foundation
 
 struct AutonomousToolLoopRunner: AgentToolLoopRunning {
-    let client: AgentNetworkClient
+    let settingsStore: BrowserSettingsStoring
     let resolver = AgentSiteResolver()
     
     func run(
@@ -12,6 +12,10 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
         try Task.checkCancellation()
         
         let resolution = resolver.resolve(request.prompt, currentURL: request.currentURL)
+        
+        let config = settingsStore.loadAgentProviderConfiguration()
+        let descriptor = try AgentProviderResolver().descriptor(for: config)
+        let client = AgentNetworkClient(descriptor: descriptor)
         
         let resolveStep = await startStep(
             title: "Plan autonomous run",
