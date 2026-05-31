@@ -7,6 +7,12 @@ private let logger = Logger(subsystem: "com.aero.browser", category: "HistorySto
 @Observable
 final class HistoryStore {
     private let context: ModelContext
+    
+    @MainActor
+    var items: [HistoryItem] {
+        let descriptor = FetchDescriptor<HistoryItem>(sortBy: [SortDescriptor(\.visitDate, order: .reverse)])
+        return (try? context.fetch(descriptor)) ?? []
+    }
 
     @MainActor
     init() {

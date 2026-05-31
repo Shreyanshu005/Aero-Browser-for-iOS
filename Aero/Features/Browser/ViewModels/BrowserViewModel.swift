@@ -92,8 +92,7 @@ final class BrowserViewModel {
         set { if newValue { sheetRouter.present(.trackerReceipt) } else { sheetRouter.dismissSheet() } }
     }
     
-    var showReaderMode: Bool = false
-    var showFindInPage: Bool = false
+
     var showAgentPanel: Bool = false
     var pendingDownload: PendingDownload?
     var pendingJavaScriptDialog: JavaScriptDialogRequest?
@@ -118,9 +117,9 @@ final class BrowserViewModel {
     var tabSwipeDirection: CGFloat = 0
 
     init(
-        tabManager: TabManager = TabManager(),
-        historyStore: HistoryStore = HistoryStore(),
-        favoritesStore: FavoritesStore = FavoritesStore(),
+        tabManager: TabManager? = nil,
+        historyStore: HistoryStore? = nil,
+        favoritesStore: FavoritesStore? = nil,
         downloadManager: DownloadManager = DownloadManager(),
         contentBlocker: ContentBlocker = ContentBlocker(),
         settingsStore: BrowserSettingsStoring = BrowserSettingsStore(),
@@ -130,9 +129,9 @@ final class BrowserViewModel {
         let settings = settingsStore.loadSettings()
         self.searchEngine = settings.searchEngine
         self.contentBlockerEnabled = settings.contentBlockerEnabled
-        self.tabManager = tabManager
-        self.historyStore = historyStore
-        self.favoritesStore = favoritesStore
+        self.tabManager = tabManager ?? TabManager()
+        self.historyStore = historyStore ?? HistoryStore()
+        self.favoritesStore = favoritesStore ?? FavoritesStore()
         self.downloadManager = downloadManager
         self.contentBlocker = contentBlocker
 
@@ -155,10 +154,7 @@ final class BrowserViewModel {
         )
     }
 
-    deinit {
-        pendingJavaScriptDialog?.cancel()
-        queuedJavaScriptDialogs.forEach { $0.cancel() }
-    }
+
 
     func submitAddressBar() {
         let input = addressBarText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -258,6 +254,40 @@ final class BrowserViewModel {
     }
 
 
+    func reopenLastClosedTab() {
+        tabManager.reopenLastClosedTab()
+    }
+    
+    func closeTab(_ tab: Tab) {
+        tabManager.closeTab(id: tab.id)
+    }
+
+    func closeAllTabs() {
+        tabManager.closeAllTabs()
+    }
+
+    func switchBrowsingMode(_ mode: BrowsingMode) {
+        tabManager.switchBrowsingMode(mode)
+    }
+    
+    @discardableResult
+    func newPrivateTab() -> Tab {
+        let tab = tabManager.newPrivateTab()
+        chromeController.expand()
+        return tab
+    }
+    
+    @discardableResult
+    func newTab() -> Tab {
+        let tab = tabManager.newTab()
+        chromeController.expand()
+        return tab
+    }
+    
+    var canReopenLastClosedTab: Bool {
+        tabManager.recentlyClosedTabCount > 0
+    }
+
     private func saveSessionForActiveStandardTab() {
         guard activeTab?.browsingMode.isSessionRestorable == true else { return }
         tabManager.saveSession()
@@ -293,6 +323,38 @@ final class BrowserViewModel {
         } else {
             tab.webView?.reload()
         }
+    }
+    
+    func updateSuggestions(for query: String) {
+        guard !query.isEmpty, isAddressBarFocused else {
+            suggestions = []
+            return
+        }
+
+        suggestions = suggestionProvider.suggestions(
+            for: query,
+            tabs: tabManager.tabs(in: activeBrowsingMode),
+            favorites: favoritesStore.favorites,
+            history: activeTab?.isPrivate == true ? [] : historyStore.items,
+            activeTabID: activeTab?.id
+        )
+    }
+
+    func clearSuggestions() {
+        suggestions = []
+    }
+
+    func selectSuggestion(_ suggestion: BrowserSuggestion) {
+        if let tabID = suggestion.tabID {
+            tabManager.switchToTab(id: tabID)
+        } else if let url = suggestion.url {
+            addressBarText = url.absoluteString
+            tabManager.loadInActiveTab(url: url)
+        }
+
+        isAddressBarFocused = false
+        searchService.clearSearchSuggestions()
+        chromeController.expand()
     }
 
     func stopLoading() {
@@ -372,7 +434,7 @@ final class BrowserViewModel {
     func requestLinkActions(_ request: LinkActionRequest) {
         pendingLinkActionRequest = request
         isAddressBarFocused = false
-        clearSearchSuggestions()
+        searchService.clearSearchSuggestions()
         chromeController.expand()
     }
 
@@ -407,7 +469,7 @@ final class BrowserViewModel {
         tabManager.loadInActiveTab(url: request.url)
         pendingLinkActionRequest = nil
         isAddressBarFocused = false
-        clearSearchSuggestions()
+        searchService.clearSearchSuggestions()
         syncAddressBarWithActiveTab()
         chromeController.expand()
     }
@@ -415,12 +477,14 @@ final class BrowserViewModel {
     private func compileContentBlockerRules() {
         let contentBlocker = self.contentBlocker
         Task { [weak self, contentBlocker] in
-            let didCompile = await contentBlocker.compileRules()
-            guard didCompile else { return }
-
-            await MainActor.run {
-                guard let self, self.contentBlockerEnabled else { return }
-                self.recreateWebViewsForContentBlockerConfigurationChange()
+            do {
+                try await contentBlocker.compileRules()
+                await MainActor.run {
+                    guard let self, self.contentBlockerEnabled else { return }
+                    self.recreateWebViewsForContentBlockerConfigurationChange()
+                }
+            } catch {
+                // Ignore error
             }
         }
     }
@@ -480,5 +544,13 @@ final class BrowserViewModel {
         for tab in tabManager.tabs {
             tab.updateContentBlockerStatus(isEnabled: contentBlockerEnabled)
         }
+    }
+}
+
+// MARK: - Tab Management Helpers
+extension BrowserViewModel {
+    func selectTab(_ tab: Tab) {
+        tabManager.switchToTab(id: tab.id)
+        isShowingTabGrid = false
     }
 }

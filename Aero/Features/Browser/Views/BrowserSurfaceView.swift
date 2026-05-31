@@ -189,7 +189,7 @@ struct BrowserSurfaceView: View {
                 ErrorPageView(
                     error: navigationError,
                     retryAction: viewModel.retryFailedNavigation,
-                    newTabAction: viewModel.newTab
+                    newTabAction: { viewModel.newTab() }
                 )
                 .transition(.opacity)
             } else if tab.url == nil {

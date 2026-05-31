@@ -90,6 +90,12 @@ final class DownloadManager: NSObject {
         }
     }
 
+    func retryDownload(id: UUID) {
+        guard let item = downloads.first(where: { $0.id == id }) else { return }
+        removeDownload(id: id)
+        startDownload(url: item.url, suggestedFilename: item.filename)
+    }
+
     func removeDownload(id: UUID) {
         downloads.removeAll { $0.id == id }
     }

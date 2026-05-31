@@ -56,7 +56,7 @@ struct AgentChatPanelView: View {
             ZStack {
                 Circle()
                     .fill(Color(UIColor.systemBackground).opacity(0.28))
-                    .browserLiquidGlassBackground(in: Circle())
+                    .aeroGlassSurface(style: .control, in: Circle())
 
                 Image(systemName: "sparkles")
                     .font(.system(size: 20, weight: .semibold))
@@ -347,8 +347,8 @@ struct AgentChatPanelView: View {
                 .background {
                     RoundedRectangle(cornerRadius: AeroRadius.lg, style: .continuous)
                         .fill(Color(UIColor.systemBackground).opacity(0.42))
-                        .browserLiquidGlassBackground(
-                            in: RoundedRectangle(cornerRadius: AeroRadius.lg, style: .continuous)
+                        .aeroGlassSurface(style: .control,
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                         )
                 }
                 .overlay {
@@ -369,7 +369,7 @@ struct AgentChatPanelView: View {
             .background {
                 Circle()
                     .fill(Color(UIColor.systemBackground).opacity(0.34))
-                    .browserLiquidGlassBackground(in: Circle())
+                    .aeroGlassSurface(style: .control, in: Circle())
             }
             .disabled(!canStop)
             .opacity(canStop ? 1 : 0.45)
@@ -678,8 +678,8 @@ private struct AgentPromptChipView: View {
         .background {
             RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
                 .fill(Color(UIColor.systemBackground).opacity(0.30))
-                .browserLiquidGlassBackground(
-                    in: RoundedRectangle(cornerRadius: AeroRadius.md, style: .continuous)
+                .aeroGlassSurface(style: .control,
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
                 )
         }
         .overlay {

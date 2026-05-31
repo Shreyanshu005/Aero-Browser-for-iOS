@@ -36,7 +36,7 @@ struct ToolbarView: View {
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                viewModel.showTabGrid()
+                viewModel.isShowingTabGrid = true
             } label: {
                 toolbarButtonShell(isEnabled: true) {
                     ZStack {
@@ -107,7 +107,7 @@ struct ToolbarView: View {
             .background {
                 Capsule()
                     .fill(Color(UIColor.systemBackground).opacity(isEnabled ? 0.18 : 0.08))
-                    .browserLiquidGlassBackground(in: Capsule())
+                    .aeroGlassSurface(style: .control, in: Capsule())
             }
             .overlay {
                 Capsule()

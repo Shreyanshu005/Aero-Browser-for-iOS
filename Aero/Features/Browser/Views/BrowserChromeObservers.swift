@@ -22,10 +22,10 @@ struct BrowserChromeObservers: ViewModifier {
             }
             .onChange(of: viewModel.activeTab?.id) { _, _ in
                 viewModel.chromeController.expand()
-                viewModel.refreshContentBlocking()
+                viewModel.activeTab?.updateContentBlockerStatus(isEnabled: viewModel.contentBlockerEnabled)
             }
             .onChange(of: viewModel.contentBlockerEnabled) { _, _ in
-                viewModel.refreshContentBlocking()
+                viewModel.activeTab?.updateContentBlockerStatus(isEnabled: viewModel.contentBlockerEnabled)
             }
             .onChange(of: viewModel.activeTab?.url) { _, newURL in
                 if newURL == nil {

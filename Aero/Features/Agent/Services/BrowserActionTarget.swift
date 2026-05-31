@@ -55,7 +55,7 @@ extension BrowserViewModel: BrowserActionTarget {
     func browserActionOpenURL(_ url: URL) {
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
-        clearSearchSuggestions()
+        searchService.clearSearchSuggestions()
         chromeController.expand()
     }
 

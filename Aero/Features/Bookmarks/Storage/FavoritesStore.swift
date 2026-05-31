@@ -24,6 +24,12 @@ final class FavoriteItem: Identifiable, Hashable {
 @Observable
 final class FavoritesStore {
     private let context: ModelContext
+    
+    @MainActor
+    var favorites: [FavoriteItem] {
+        let descriptor = FetchDescriptor<FavoriteItem>()
+        return (try? context.fetch(descriptor)) ?? []
+    }
 
     @MainActor
     init() {

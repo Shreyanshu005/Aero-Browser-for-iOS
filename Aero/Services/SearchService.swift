@@ -8,7 +8,6 @@ final class SearchService {
 
     func fetchSearchSuggestions(for query: String, isFocused: Bool) {
         suggestionsTask?.cancel()
-        updateSuggestions(for: query)
 
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isFocused else {
@@ -43,7 +42,6 @@ final class SearchService {
     func clearSearchSuggestions() {
         suggestionsTask?.cancel()
         searchSuggestions = []
-        clearSuggestions()
     }
 
     func addRecentSearch(_ query: String) {
@@ -58,35 +56,4 @@ final class SearchService {
         UserDefaults.standard.set(recentSearches, forKey: "recent_searches")
     }
 
-    func updateSuggestions(for query: String) {
-        guard !query.isEmpty, isAddressBarFocused else {
-            suggestions = []
-            return
-        }
-
-        suggestions = suggestionProvider.suggestions(
-            for: query,
-            tabs: tabManager.tabs(in: activeBrowsingMode),
-            favorites: favoritesStore.favorites,
-            history: activeTab?.isPrivate == true ? [] : historyStore.items,
-            activeTabID: activeTab?.id
-        )
-    }
-
-    func clearSuggestions() {
-        suggestions = []
-    }
-
-    func selectSuggestion(_ suggestion: BrowserSuggestion) {
-        if let tabID = suggestion.tabID {
-            tabManager.switchToTab(id: tabID)
-        } else if let url = suggestion.url {
-            addressBarText = url.absoluteString
-            tabManager.loadInActiveTab(url: url)
-        }
-
-        isAddressBarFocused = false
-        clearSearchSuggestions()
-        chromeController.expand()
-    }
 }

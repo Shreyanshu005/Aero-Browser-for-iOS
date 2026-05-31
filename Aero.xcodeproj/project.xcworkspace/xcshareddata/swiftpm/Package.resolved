@@ -1,0 +1,15 @@
+{
+  "originHash" : "caa0ed2db0483dfe3c44a4d397d22c5880e24702bed736a5e5edf2827627907e",
+  "pins" : [
+    {
+      "identity" : "swiftyai",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kartikayy007/SwiftyAI.git",
+      "state" : {
+        "revision" : "328ccf8588ec8a831e95ea59b056205deab32f0c",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}

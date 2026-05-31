@@ -153,7 +153,7 @@ struct DownloadsView: View {
         }
 
         Button(role: .destructive) {
-            viewModel.downloadManager.deleteDownload(id: item.id)
+            viewModel.downloadManager.removeDownload(id: item.id)
         } label: {
             Label("Delete", systemImage: "trash")
         }
@@ -169,7 +169,7 @@ struct DownloadsView: View {
             }
         } else {
             Button(role: .destructive) {
-                viewModel.downloadManager.deleteDownload(id: item.id)
+                viewModel.downloadManager.removeDownload(id: item.id)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
