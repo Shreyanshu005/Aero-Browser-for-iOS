@@ -31,6 +31,11 @@ The project explores modern iOS design patterns and browser architecture using A
 - **Privacy Dashboard**: Real-time insights into connection security and blocked trackers.
 - **Zero-Footprint Mode**: Easily clear cookies, history, and website data with a single tap.
 
+### 🤖 AI Agentic Browser (Powered by Groq)
+- **Autonomous Navigation**: Aero includes a built-in AI agent capable of navigating, reasoning, and acting on web pages.
+- **Action Execution Loop**: Implements a highly robust ReAct (Reason + Act) loop using `playwright` style DOM interactions entirely natively in iOS.
+- **Eager WebView Instantiation**: Agent actions dynamically instantiate and manipulate WKWebViews instantly without waiting for SwiftUI view renders.
+
 ### 📖 Productivity & Utility
 - **Optimized Reader Mode**: Distraction-free reading with configurable serif typography and adjustable font sizes.
 - **Native Find-in-Page**: Fast, highlighted search within any webpage.
@@ -69,9 +74,10 @@ The interface uses native iOS materials and places important controls within thu
 
 ### Tabs
 
-- Grid based tab overview with live previews
+- Grid based tab overview with live previews and maximized screen real-estate
 - Support for multiple active tabs with memory management
-- Simple tab switching and creation using familiar iOS patterns
+- Instant tab creation and automatic grid dismissal
+- Dedicated one-tap toggle for switching between Standard and Private tabs
 
 ### Privacy
 
@@ -124,7 +130,6 @@ Aero uses a layered structure to keep the codebase organized and maintainable.
 
 Planned features include:
 
-- AI based webpage summaries
 - CloudKit sync for bookmarks and history
 - Support for Safari style extensions
 - Improved fingerprinting protection
