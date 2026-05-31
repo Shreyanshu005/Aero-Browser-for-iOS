@@ -53,6 +53,9 @@ extension BrowserViewModel: BrowserActionTarget {
     }
 
     func browserActionOpenURL(_ url: URL) {
+        if let tab = activeTab, tab.webView == nil {
+            _ = tab.createWebView(contentBlocker: contentBlocker, isContentBlockerEnabled: contentBlockerEnabled)
+        }
         tabManager.loadInActiveTab(url: url)
         isAddressBarFocused = false
         searchService.clearSearchSuggestions()
@@ -76,10 +79,10 @@ extension BrowserViewModel: BrowserActionTarget {
     }
 
     func browserActionEvaluateJavaScript(_ javaScript: String) async throws -> Any? {
-        guard let webView = activeTab?.webView else {
+        guard let tab = activeTab else {
             throw BrowserActionExecutionError.missingWebView
         }
-
+        let webView = tab.webView ?? tab.createWebView(contentBlocker: contentBlocker, isContentBlockerEnabled: contentBlockerEnabled)
         return try await webView.evaluateBrowserActionJavaScript(javaScript)
     }
 }
