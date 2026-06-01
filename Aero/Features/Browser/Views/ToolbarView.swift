@@ -104,16 +104,7 @@ struct ToolbarView: View {
         content()
             .frame(maxWidth: .infinity)
             .frame(height: buttonHeight)
-            .background {
-                Capsule()
-                    .fill(Color(UIColor.systemBackground).opacity(isEnabled ? 0.18 : 0.08))
-                    .aeroGlassSurface(style: .control, in: Capsule())
-            }
-            .overlay {
-                Capsule()
-                    .strokeBorder(Color.white.opacity(isEnabled ? 0.22 : 0.12), lineWidth: 0.6)
-            }
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
     }
 
     private var visibleTabCount: String {

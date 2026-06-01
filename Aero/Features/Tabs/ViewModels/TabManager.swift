@@ -166,9 +166,13 @@ final class TabManager {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
 
         activeTab?.captureSnapshot()
-        activeTabIndex = index
-        tabs[index].lastAccessedAt = Date()
-        saveSessionIfRestorable(tabs[index])
+        
+        let tab = tabs.remove(at: index)
+        tabs.append(tab)
+        
+        activeTabIndex = tabs.count - 1
+        tabs[activeTabIndex].lastAccessedAt = Date()
+        saveSessionIfRestorable(tabs[activeTabIndex])
     }
 
     func switchToPreviousTab() {
