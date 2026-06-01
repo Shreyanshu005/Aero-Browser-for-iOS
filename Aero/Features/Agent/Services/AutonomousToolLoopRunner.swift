@@ -4,6 +4,11 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
     let settingsStore: BrowserSettingsStoring
     let resolver = AgentSiteResolver()
     
+    /// Maximum conversation history turns to keep (rolling window).
+    private static let maxHistoryTurns = 6
+    /// Maximum retries when the LLM returns unparseable JSON.
+    private static let maxJSONRetries = 2
+    
     func run(
         request: AgentToolLoopRequest,
         browserTools: AgentBrowserTooling,
@@ -38,7 +43,7 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
         )
         
         var history: [String] = []
-        let maxSteps = 25
+        let maxSteps = 15
         var finalResult = "Task completed."
         
         for step in 0..<maxSteps {
@@ -81,32 +86,69 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                 eventHandler: eventHandler
             )
             
-            let responseText: String
-            do {
-                responseText = try await client.nextAction(task: request.prompt, observation: validObservation, history: history)
-            } catch {
-                await updateStep(
-                    planStep,
-                    status: .failed,
-                    detail: "LLM error: \\(error.localizedDescription)",
-                    eventHandler: eventHandler
-                )
-                throw error
+            // --- Improvement #5: JSON parse auto-retry ---
+            var responseText: String = ""
+            var parsed: [String: Any]?
+            var actionType: String?
+            var jsonRetries = 0
+            
+            while jsonRetries <= Self.maxJSONRetries {
+                do {
+                    // --- Improvement #2: 429 errors are retried inside nextAction ---
+                    responseText = try await client.nextAction(task: request.prompt, observation: validObservation, history: history)
+                } catch let error as AgentNetworkError where error.isRateLimited {
+                    await updateStep(
+                        planStep,
+                        status: .failed,
+                        detail: "Rate limited by API. Waiting before retry...",
+                        eventHandler: eventHandler
+                    )
+                    throw error
+                } catch {
+                    await updateStep(
+                        planStep,
+                        status: .failed,
+                        detail: "LLM error: \\(error.localizedDescription)",
+                        eventHandler: eventHandler
+                    )
+                    throw error
+                }
+                
+                if let jsonData = responseText.data(using: .utf8),
+                   let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                   let action = obj["action"] as? String {
+                    parsed = obj
+                    actionType = action
+                    break
+                }
+                
+                jsonRetries += 1
+                if jsonRetries <= Self.maxJSONRetries {
+                    history.append("System: Your last response was not valid JSON. Please reply with ONLY a JSON object.")
+                    await updateStep(
+                        planStep,
+                        status: .running,
+                        detail: "Invalid JSON from LLM, retrying (\\(jsonRetries)/\\(Self.maxJSONRetries))...",
+                        eventHandler: eventHandler
+                    )
+                }
             }
             
-            guard let jsonData = responseText.data(using: .utf8),
-                  let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                  let actionType = parsed["action"] as? String else {
+            guard let parsed, let actionType else {
                 await updateStep(
                     planStep,
                     status: .failed,
-                    detail: "Invalid LLM JSON response: \\(responseText)",
+                    detail: "Invalid LLM JSON after \\(Self.maxJSONRetries) retries: \\(responseText.prefix(200))",
                     eventHandler: eventHandler
                 )
-                throw AgentNetworkError.apiError("Invalid JSON from LLM: \\(responseText)")
+                throw AgentNetworkError.invalidJSON(rawResponse: responseText)
             }
             
             history.append("Step \\(step): \\(responseText)")
+            // --- Improvement #3: Trim history to rolling window ---
+            if history.count > Self.maxHistoryTurns {
+                history = Array(history.suffix(Self.maxHistoryTurns))
+            }
             
             await updateStep(
                 planStep,
@@ -172,8 +214,8 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                 history.append("Action \\(actionType) failed: \\(error.localizedDescription)")
             }
             
-            // Wait a bit for page to settle after action
-            _ = try await browserTools.wait(seconds: 2.0)
+            // Wait for page to settle after action (0.8s is enough for most re-renders)
+            _ = try await browserTools.wait(seconds: 0.8)
         }
         
         return AgentToolLoopResult(finalAnswer: finalResult)

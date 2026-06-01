@@ -3,22 +3,53 @@ import Foundation
 enum AgentNetworkError: Error, LocalizedError {
     case invalidURL
     case apiError(String)
+    case rateLimited(retryAfterSeconds: Int?)
+    case invalidJSON(rawResponse: String)
     
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid URL"
         case .apiError(let msg): return "API Error: \(msg)"
+        case .rateLimited(let seconds):
+            if let s = seconds {
+                return "Rate limited. Retry after \(s)s."
+            }
+            return "Rate limited by the API."
+        case .invalidJSON(let raw):
+            return "LLM returned invalid JSON: \(raw.prefix(200))"
         }
+    }
+    
+    var isRateLimited: Bool {
+        if case .rateLimited = self { return true }
+        return false
     }
 }
 
 struct AgentNetworkClient {
     let descriptor: AgentResolvedProviderDescriptor
     
+    /// Maximum number of history turns to send to the LLM.
+    /// Keeps token usage manageable and avoids exceeding context windows.
+    private static let maxHistoryTurns = 6
+    
+    /// Maximum retries when the API returns 429 (rate limited).
+    private static let maxRateLimitRetries = 2
+    
+    /// Seconds to wait between rate-limit retries.
+    private static let rateLimitBackoffSeconds: [UInt64] = [5, 15]
+    
     func nextAction(task: String, observation: AgentPageObservation, history: [String]) async throws -> String {
-        let elements = observation.elements
+        // --- Improvement #4: Cap element list at 40 ---
+        // Prioritize inputs and buttons near the top, then links.
+        let cappedElements = Self.trimElements(observation.elements, limit: 40)
+        
+        let elements = cappedElements
             .map { "[\($0.id)] \($0.role): \($0.label) \($0.text)" }
             .joined(separator: "\n")
+        
+        // --- Improvement #3: Rolling history window ---
+        let trimmedHistory = Array(history.suffix(Self.maxHistoryTurns))
             
         let prompt = """
         You are an autonomous browser agent. Your task is: \(task)
@@ -32,7 +63,7 @@ struct AgentNetworkClient {
         \(elements)
         
         History of actions taken:
-        \(history.joined(separator: "\n"))
+        \(trimmedHistory.joined(separator: "\n"))
         
         You must decide the next single action to take.
         Reply ONLY with one valid JSON object and nothing else. No markdown wrapping.
@@ -44,11 +75,73 @@ struct AgentNetworkClient {
         {"action":"done","result":"..."}
         """
         
-        if descriptor.providerID == .gemini {
-            return try await generateGemini(prompt: prompt)
-        } else {
-            return try await generateOpenAI(prompt: prompt)
+        // --- Improvement #2: 429 rate-limit backoff ---
+        var lastError: Error?
+        for attempt in 0...Self.maxRateLimitRetries {
+            do {
+                if descriptor.providerID == .gemini {
+                    return try await generateGemini(prompt: prompt)
+                } else {
+                    return try await generateOpenAI(prompt: prompt)
+                }
+            } catch let error as AgentNetworkError where error.isRateLimited {
+                lastError = error
+                if attempt < Self.maxRateLimitRetries {
+                    let backoff = Self.rateLimitBackoffSeconds[min(attempt, Self.rateLimitBackoffSeconds.count - 1)]
+                    try await Task.sleep(nanoseconds: backoff * 1_000_000_000)
+                    continue
+                }
+            }
         }
+        
+        throw lastError ?? AgentNetworkError.apiError("Rate limited after retries.")
+    }
+    
+    /// Trims the element list to stay within the LLM's token budget.
+    /// Prioritizes: inputs/forms first (most actionable), then buttons, then links.
+    /// Elements near the top of the page are preferred.
+    private static func trimElements(_ elements: [AgentPageElement], limit: Int) -> [AgentPageElement] {
+        guard elements.count > limit else { return elements }
+        
+        var inputs: [AgentPageElement] = []
+        var buttons: [AgentPageElement] = []
+        var links: [AgentPageElement] = []
+        var others: [AgentPageElement] = []
+        
+        for el in elements {
+            switch el.role.lowercased() {
+            case "input", "form", "textarea", "select":
+                inputs.append(el)
+            case "button":
+                buttons.append(el)
+            case "link":
+                links.append(el)
+            default:
+                others.append(el)
+            }
+        }
+        
+        var result: [AgentPageElement] = []
+        // Always include all inputs (users need them to type)
+        result.append(contentsOf: inputs)
+        
+        let remaining = limit - result.count
+        if remaining > 0 {
+            let buttonSlice = Array(buttons.prefix(min(buttons.count, remaining / 2 + 1)))
+            result.append(contentsOf: buttonSlice)
+        }
+        
+        let remaining2 = limit - result.count
+        if remaining2 > 0 {
+            result.append(contentsOf: links.prefix(remaining2))
+        }
+        
+        let remaining3 = limit - result.count
+        if remaining3 > 0 {
+            result.append(contentsOf: others.prefix(remaining3))
+        }
+        
+        return Array(result.prefix(limit))
     }
     
     private func generateGemini(prompt: String) async throws -> String {
@@ -57,7 +150,10 @@ struct AgentNetworkClient {
         guard let url = URL(string: urlString) else { throw AgentNetworkError.invalidURL }
         
         let body: [String: Any] = [
-            "contents": [["parts": [["text": prompt]]]]
+            "contents": [["parts": [["text": prompt]]]],
+            "generationConfig": [
+                "responseMimeType": "application/json"
+            ]
         ]
         
         var request = URLRequest(url: url)
@@ -65,7 +161,14 @@ struct AgentNetworkClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // Check for rate limiting
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 429 {
+            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
+            throw AgentNetworkError.rateLimited(retryAfterSeconds: retryAfter)
+        }
+        
         if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let errorObj = errorJson["error"] as? [String: Any],
            let message = errorObj["message"] as? String {
@@ -93,12 +196,16 @@ struct AgentNetworkClient {
         
         guard let url = URL(string: "\(baseURLString)/chat/completions") else { throw AgentNetworkError.invalidURL }
         
+        // --- Improvement #1: Enable strict JSON mode ---
         let body: [String: Any] = [
             "model": descriptor.model,
             "messages": [
+                ["role": "system", "content": "You are an autonomous browser agent. You MUST return only a valid JSON object. No explanations, no markdown."],
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.0
+            "temperature": 0.1,
+            "max_tokens": 256,
+            "response_format": ["type": "json_object"]
         ]
         
         var request = URLRequest(url: url)
@@ -109,7 +216,14 @@ struct AgentNetworkClient {
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // --- Improvement #2: Detect 429 rate limits ---
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 429 {
+            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
+            throw AgentNetworkError.rateLimited(retryAfterSeconds: retryAfter)
+        }
+        
         if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let errorObj = errorJson["error"] as? [String: Any],
            let message = errorObj["message"] as? String {

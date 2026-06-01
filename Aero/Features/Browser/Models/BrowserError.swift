@@ -95,6 +95,10 @@ struct BrowserError: Equatable {
     }
 
     private static func kind(for error: NSError) -> Kind {
+        if error.domain == "WebKitErrorDomain" && error.code == 102 {
+            return .cancelled
+        }
+
         guard error.domain == NSURLErrorDomain else {
             return .unknown
         }
