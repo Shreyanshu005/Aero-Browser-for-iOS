@@ -22,25 +22,20 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
         let descriptor = try AgentProviderResolver().descriptor(for: config)
         let client = AgentNetworkClient(descriptor: descriptor)
         
-        let resolveStep = await startStep(
-            title: "Plan autonomous run",
-            detail: "Starting task: \\(request.prompt)",
+        // --- Step 1: Navigate to starting point (single visible step) ---
+        let navStep = await startStep(
+            title: "Navigating",
+            detail: Self.navigationLabel(for: resolution),
             eventHandler: eventHandler
         )
         
         if resolution.kind == .webSearch {
-            // Need to navigate to web search first
             _ = try await browserTools.openURL(resolution.url)
         } else if resolution.kind == .directURL && request.currentURL != resolution.url {
             _ = try await browserTools.openURL(resolution.url)
         }
         
-        await updateStep(
-            resolveStep,
-            status: .completed,
-            detail: "Navigated to starting point: \\(resolution.url.absoluteString)",
-            eventHandler: eventHandler
-        )
+        await updateStep(navStep, status: .completed, detail: Self.navigationLabel(for: resolution), eventHandler: eventHandler)
         
         var history: [String] = []
         let maxSteps = 15
@@ -49,9 +44,10 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
         for step in 0..<maxSteps {
             try Task.checkCancellation()
             
-            let observeStep = await startStep(
-                title: "Observe page",
-                detail: "Reading accessibility tree...",
+            // ── Observe page (silent — no step emitted) ──
+            let thinkStep = await startStep(
+                title: Self.thinkingPhrase(for: step),
+                detail: "Scanning the page…",
                 eventHandler: eventHandler
             )
             
@@ -69,24 +65,13 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
             
             guard let validObservation = observation else {
                 let errorDesc = lastError?.localizedDescription ?? "unknown"
-                await updateStep(observeStep, status: .failed, detail: "Page not loaded or WebView missing. Last error: \\(errorDesc)", eventHandler: eventHandler)
-                throw AgentNetworkError.apiError("Failed to observe page after 20 seconds. Error: \\(errorDesc)")
+                await updateStep(thinkStep, status: .failed, detail: "Page didn't respond.", eventHandler: eventHandler)
+                throw AgentNetworkError.apiError("Failed to observe page after 20 seconds. Error: \(errorDesc)")
             }
             
-            await updateStep(
-                observeStep,
-                status: .completed,
-                detail: "Observed \\(validObservation.elements.count) elements.",
-                eventHandler: eventHandler
-            )
+            // ── Ask LLM (update the same step — no new row) ──
+            await updateStep(thinkStep, status: .running, detail: "Deciding next move…", eventHandler: eventHandler)
             
-            let planStep = await startStep(
-                title: "Planning next action",
-                detail: "Asking LLM...",
-                eventHandler: eventHandler
-            )
-            
-            // --- Improvement #5: JSON parse auto-retry ---
             var responseText: String = ""
             var parsed: [String: Any]?
             var actionType: String?
@@ -94,23 +79,12 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
             
             while jsonRetries <= Self.maxJSONRetries {
                 do {
-                    // --- Improvement #2: 429 errors are retried inside nextAction ---
                     responseText = try await client.nextAction(task: request.prompt, observation: validObservation, history: history)
                 } catch let error as AgentNetworkError where error.isRateLimited {
-                    await updateStep(
-                        planStep,
-                        status: .failed,
-                        detail: "Rate limited by API. Waiting before retry...",
-                        eventHandler: eventHandler
-                    )
+                    await updateStep(thinkStep, status: .failed, detail: "Rate limited — cooling down…", eventHandler: eventHandler)
                     throw error
                 } catch {
-                    await updateStep(
-                        planStep,
-                        status: .failed,
-                        detail: "LLM error: \\(error.localizedDescription)",
-                        eventHandler: eventHandler
-                    )
+                    await updateStep(thinkStep, status: .failed, detail: "LLM error: \(error.localizedDescription)", eventHandler: eventHandler)
                     throw error
                 }
                 
@@ -125,48 +99,29 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                 jsonRetries += 1
                 if jsonRetries <= Self.maxJSONRetries {
                     history.append("System: Your last response was not valid JSON. Please reply with ONLY a JSON object.")
-                    await updateStep(
-                        planStep,
-                        status: .running,
-                        detail: "Invalid JSON from LLM, retrying (\\(jsonRetries)/\\(Self.maxJSONRetries))...",
-                        eventHandler: eventHandler
-                    )
                 }
             }
             
             guard let parsed, let actionType else {
-                await updateStep(
-                    planStep,
-                    status: .failed,
-                    detail: "Invalid LLM JSON after \\(Self.maxJSONRetries) retries: \\(responseText.prefix(200))",
-                    eventHandler: eventHandler
-                )
+                await updateStep(thinkStep, status: .failed, detail: "Couldn't parse a valid action.", eventHandler: eventHandler)
                 throw AgentNetworkError.invalidJSON(rawResponse: responseText)
             }
             
-            history.append("Step \\(step): \\(responseText)")
-            // --- Improvement #3: Trim history to rolling window ---
+            history.append("Step \(step): \(responseText)")
             if history.count > Self.maxHistoryTurns {
                 history = Array(history.suffix(Self.maxHistoryTurns))
             }
             
-            await updateStep(
-                planStep,
-                status: .completed,
-                detail: "Decided to \\(actionType)",
-                eventHandler: eventHandler
-            )
-            
+            // ── Done? ──
             if actionType == "done" {
                 finalResult = parsed["result"] as? String ?? "Task completed."
+                await updateStep(thinkStep, status: .completed, detail: "Finished!", eventHandler: eventHandler)
                 break
             }
             
-            let executeStep = await startStep(
-                title: "Execute action",
-                detail: "Executing: \\(actionType)",
-                eventHandler: eventHandler
-            )
+            // ── Execute action (update the SAME step with a cool label) ──
+            let actionLabel = Self.actionLabel(actionType: actionType, parsed: parsed)
+            await updateStep(thinkStep, status: .running, detail: actionLabel, eventHandler: eventHandler)
             
             do {
                 switch actionType {
@@ -178,7 +133,6 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                     if let text = parsed["text"] as? String {
                         let id = parsed["elementID"] as? String
                         _ = try await browserTools.type(text, into: id)
-                        // Auto-press enter if needed, or LLM can call click
                         if parsed["submit"] as? Bool == true {
                             _ = try await browserTools.pressKey(.enter)
                         }
@@ -198,27 +152,75 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                     break
                 }
                 
-                await updateStep(
-                    executeStep,
-                    status: .completed,
-                    detail: "Executed \\(actionType) successfully.",
-                    eventHandler: eventHandler
-                )
+                await updateStep(thinkStep, status: .completed, detail: actionLabel, eventHandler: eventHandler)
             } catch {
-                await updateStep(
-                    executeStep,
-                    status: .failed,
-                    detail: "Action failed: \\(error.localizedDescription)",
-                    eventHandler: eventHandler
-                )
-                history.append("Action \\(actionType) failed: \\(error.localizedDescription)")
+                await updateStep(thinkStep, status: .failed, detail: "Failed: \(actionLabel)", eventHandler: eventHandler)
+                history.append("Action \(actionType) failed: \(error.localizedDescription)")
             }
             
-            // Wait for page to settle after action (0.8s is enough for most re-renders)
+            // Wait for page to settle
             _ = try await browserTools.wait(seconds: 0.8)
         }
         
         return AgentToolLoopResult(finalAnswer: finalResult)
+    }
+    
+    // MARK: - Cool Labels
+    
+    /// Rotating "thinking" phrases so the UI feels alive.
+    private static func thinkingPhrase(for step: Int) -> String {
+        let phrases = [
+            "Analyzing",
+            "Exploring",
+            "Inspecting",
+            "Processing",
+            "Evaluating",
+            "Scanning",
+            "Investigating",
+            "Reasoning",
+            "Interpreting",
+            "Assessing",
+            "Examining",
+            "Mapping out",
+            "Decoding",
+            "Reading",
+            "Synthesizing",
+        ]
+        return phrases[step % phrases.count]
+    }
+    
+    /// Human-friendly action descriptions.
+    private static func actionLabel(actionType: String, parsed: [String: Any]) -> String {
+        switch actionType {
+        case "click":
+            let id = parsed["elementID"] as? String ?? ""
+            return "Tapping element \(id)"
+        case "type":
+            let text = parsed["text"] as? String ?? ""
+            let preview = text.count > 30 ? String(text.prefix(30)) + "…" : text
+            return "Typing \"\(preview)\""
+        case "navigate":
+            if let urlStr = parsed["url"] as? String,
+               let host = URL(string: urlStr)?.host {
+                return "Opening \(host)"
+            }
+            return "Navigating…"
+        case "scroll":
+            let dir = parsed["direction"] as? String ?? "down"
+            return "Scrolling \(dir)"
+        case "wait":
+            return "Waiting for page…"
+        default:
+            return actionType.capitalized
+        }
+    }
+    
+    /// Navigation label for the initial step.
+    private static func navigationLabel(for resolution: AgentSiteResolution) -> String {
+        if let host = resolution.url.host {
+            return "Opening \(host)"
+        }
+        return "Opening page…"
     }
     
     private func startStep(

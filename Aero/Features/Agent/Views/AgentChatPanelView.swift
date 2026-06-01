@@ -207,39 +207,22 @@ struct AgentChatPanelView: View {
     }
 
     private var runLogSection: some View {
-        VStack(alignment: .leading, spacing: AeroSpacing.sm) {
-            AgentSectionHeader(title: "Run Log") {
-                statusPill
+        VStack(alignment: .leading, spacing: AeroSpacing.md) {
+            // Live status card — the main thing the user sees while agent works
+            if let activeStep = runLogItems.last(where: { $0.status == .running }) {
+                AgentLiveStatusCard(title: activeStep.title, detail: activeStep.detail)
             }
 
-            AeroGlassPanel(style: .panel, cornerRadius: AeroRadius.lg) {
-                VStack(spacing: 0) {
-                    if runLogItems.isEmpty {
-                        Text("Waiting for a task. Timeline steps will appear here.")
-                            .font(AeroFont.caption)
-                            .foregroundStyle(AeroColor.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(AeroSpacing.md)
-                    } else {
-                        ForEach(Array(runLogItems.enumerated()), id: \.element.id) { index, item in
-                            AgentRunTimelineRow(
-                                item: item,
-                                isFirst: index == 0,
-                                isLast: index == runLogItems.count - 1
-                            )
-                        }
-                    }
+            // Completed steps — compact pills
+            let completed = runLogItems.filter { $0.status == .completed || $0.status == .failed }
+            if !completed.isEmpty {
+                AgentCompletedStepsView(steps: completed)
+            }
 
-                    if let pendingApproval = engine.session.pendingApproval {
-                        approvalActions(pendingApproval)
-                            .padding(.top, runLogItems.isEmpty ? 0 : AeroSpacing.sm)
-                            .padding([.horizontal, .bottom], AeroSpacing.md)
-                    } else if runState == .failed {
-                        retryActions
-                            .padding(.top, runLogItems.isEmpty ? 0 : AeroSpacing.sm)
-                            .padding([.horizontal, .bottom], AeroSpacing.md)
-                    }
-                }
+            if let pendingApproval = engine.session.pendingApproval {
+                approvalActions(pendingApproval)
+            } else if runState == .failed {
+                retryActions
             }
         }
     }
@@ -743,127 +726,94 @@ private struct AgentMessageBubble: View {
     }
 }
 
-private struct AgentRunTimelineRow: View {
-    var item: AgentRunLogItem
-    var isFirst: Bool
-    var isLast: Bool
+/// Pulsing live status card — the hero element while the agent is working.
+private struct AgentLiveStatusCard: View {
+    var title: String
+    var detail: String
+    @State private var isPulsing = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: AeroSpacing.md) {
-            VStack(spacing: AeroSpacing.xs) {
-                Rectangle()
-                    .fill(isFirst ? Color.clear : tint.opacity(0.28))
-                    .frame(width: 2, height: 10)
+        AeroGlassPanel(style: .panel, cornerRadius: AeroRadius.lg) {
+            HStack(spacing: AeroSpacing.md) {
+                // Pulsing orb
+                ZStack {
+                    Circle()
+                        .fill(Color(UIColor.systemBlue).opacity(0.25))
+                        .frame(width: 36, height: 36)
+                        .scaleEffect(isPulsing ? 1.3 : 0.9)
+                        .opacity(isPulsing ? 0.0 : 0.6)
 
-                Image(systemName: iconName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(tint)
-                    .frame(width: 30, height: 30)
-                    .background(tint.opacity(0.12), in: Circle())
+                    Circle()
+                        .fill(Color(UIColor.systemBlue))
+                        .frame(width: 14, height: 14)
 
-                Rectangle()
-                    .fill(isLast ? Color.clear : tint.opacity(0.28))
-                    .frame(width: 2)
-                    .frame(maxHeight: .infinity)
-            }
-            .frame(width: 30)
-
-            VStack(alignment: .leading, spacing: AeroSpacing.xs) {
-                HStack(alignment: .firstTextBaseline, spacing: AeroSpacing.xs) {
-                    Text(item.title)
-                        .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(AeroColor.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    statusBadge
-
-                    Spacer(minLength: 0)
+                    Circle()
+                        .fill(Color.white.opacity(0.5))
+                        .frame(width: 6, height: 6)
+                        .offset(x: -2, y: -2)
+                }
+                .frame(width: 36, height: 36)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                        isPulsing = true
+                    }
                 }
 
-                Text(item.detail)
-                    .font(AeroFont.caption)
-                    .foregroundStyle(AeroColor.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(AeroColor.textPrimary)
+                        .lineLimit(1)
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.3), value: title)
+
+                    Text(detail)
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .foregroundStyle(AeroColor.textSecondary)
+                        .lineLimit(2)
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.3), value: detail)
+                }
+
+                Spacer(minLength: 0)
             }
-
-            Spacer(minLength: 0)
+            .padding(AeroSpacing.md)
         }
-        .padding(.horizontal, AeroSpacing.md)
-        .padding(.vertical, AeroSpacing.sm)
     }
+}
 
-    @ViewBuilder
-    private var statusBadge: some View {
-        HStack(spacing: 4) {
-            Text(statusLabel)
-                .font(.system(size: 10, weight: .bold))
+/// Compact horizontal scroll of completed step pills.
+private struct AgentCompletedStepsView: View {
+    var steps: [AgentRunLogItem]
 
-            if let metadataLabel = item.metadataLabel {
-                Text(metadataLabel)
-                    .font(.system(size: 10, weight: .medium))
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AeroSpacing.sm) {
+                ForEach(steps) { step in
+                    HStack(spacing: 5) {
+                        Image(systemName: step.status == .completed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(step.status == .completed ? AeroColor.success : AeroColor.error)
+
+                        Text(step.title)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(AeroColor.textSecondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color(UIColor.systemBackground).opacity(0.3))
+                            .aeroGlassSurface(style: .control, in: Capsule())
+                    )
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.7).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                }
             }
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(tint.opacity(0.12), in: Capsule())
-    }
-
-    private var iconName: String {
-        switch item.phase {
-        case .observePage:
-            return "eye"
-        case .selectedAction:
-            return "cursorarrow.click.2"
-        case .result:
-            return "checklist"
-        case .approvalNeeded:
-            return "hand.raised.fill"
-        case .retry:
-            return "arrow.counterclockwise"
-        case .error:
-            return "exclamationmark.triangle.fill"
-        case .finalAnswer:
-            return "sparkles"
-        }
-    }
-
-    private var statusLabel: String {
-        switch item.status {
-        case .queued:
-            return "Queued"
-        case .running:
-            return "Running"
-        case .waiting:
-            return "Waiting"
-        case .approvalNeeded:
-            return "Approval"
-        case .completed:
-            return "Done"
-        case .failed:
-            return "Failed"
-        case .stopped:
-            return "Stopped"
-        }
-    }
-
-    private var tint: Color {
-        switch item.status {
-        case .queued:
-            return AeroColor.textSecondary
-        case .running:
-            return Color(UIColor.systemBlue)
-        case .waiting:
-            return AeroColor.textSecondary
-        case .approvalNeeded:
-            return AeroColor.warning
-        case .completed:
-            return AeroColor.success
-        case .failed:
-            return AeroColor.error
-        case .stopped:
-            return AeroColor.error
+            .animation(.spring(response: 0.4, dampingFraction: 0.75), value: steps.count)
         }
     }
 }
