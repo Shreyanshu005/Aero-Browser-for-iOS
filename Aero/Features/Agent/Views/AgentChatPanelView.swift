@@ -24,10 +24,17 @@ struct AgentChatPanelView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: AeroSpacing.lg) {
-                    pageContext
-                    promptChips
-                    transcriptSection
-                    runLogSection
+                    if session.status == .idle {
+                        pageContext
+                        promptChips
+                    } else {
+                        taskHeader
+                        if session.finalAnswer != nil || session.error != nil {
+                            responseBox
+                        } else {
+                            runLogSection
+                        }
+                    }
                 }
                 .padding(.horizontal, AeroSpacing.lg)
                 .padding(.bottom, AeroSpacing.lg)
@@ -161,48 +168,42 @@ struct AgentChatPanelView: View {
         }
     }
 
-    private var transcriptSection: some View {
+    private var taskHeader: some View {
         VStack(alignment: .leading, spacing: AeroSpacing.sm) {
-            AgentSectionHeader(title: "Transcript")
-
-            if transcriptMessages.isEmpty {
-                emptyTranscript
-            } else {
-                VStack(spacing: AeroSpacing.md) {
-                    ForEach(transcriptMessages) { message in
-                        AgentMessageBubble(message: message)
-                    }
-                }
-            }
+            Text("Task")
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(Color(UIColor.systemBlue))
+            
+            Text(session.prompt)
+                .font(.system(.title3, design: .rounded, weight: .medium))
+                .foregroundStyle(AeroColor.textPrimary)
+                .lineLimit(nil)
         }
+        .padding(.top, AeroSpacing.sm)
     }
 
-    private var emptyTranscript: some View {
+    private var responseBox: some View {
         AeroGlassPanel(style: .panel, cornerRadius: AeroRadius.lg) {
-            VStack(spacing: AeroSpacing.md) {
-                Image(systemName: "bubble.left.and.text.bubble.right")
-                    .font(.system(size: 30, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AeroColor.textSecondary)
-
-                VStack(spacing: AeroSpacing.xs) {
-                    Text("Start with a browsing task")
-                        .font(.system(.headline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(AeroColor.textPrimary)
-                        .multilineTextAlignment(.center)
-
-                    Text("Use a suggestion or type what you want handled next.")
-                        .font(AeroFont.caption)
-                        .foregroundStyle(AeroColor.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: AeroSpacing.md) {
+                HStack(spacing: AeroSpacing.sm) {
+                    Image(systemName: session.error != nil ? "exclamationmark.triangle.fill" : "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(session.error != nil ? AeroColor.error : Color(UIColor.systemIndigo))
+                    
+                    Text(session.error != nil ? "Error" : "Response")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                        .foregroundStyle(session.error != nil ? AeroColor.error : Color(UIColor.systemIndigo))
                 }
+                
+                Text(session.finalAnswer ?? session.error?.message ?? "")
+                    .font(AeroFont.body)
+                    .foregroundStyle(AeroColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AeroSpacing.xl)
-            .padding(.horizontal, AeroSpacing.lg)
+            .padding(AeroSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .accessibilityIdentifier("agent.chat.empty")
+        .accessibilityIdentifier("agent.chat.response")
     }
 
     private var runLogSection: some View {
