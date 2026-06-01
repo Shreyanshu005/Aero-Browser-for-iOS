@@ -214,8 +214,28 @@ enum BrowserActionJavaScript {
             return tag === "input" || tag === "textarea" || element.isContentEditable;
           }
 
+          function setNativeValue(element, newValue) {
+            const tag = element.tagName ? element.tagName.toLowerCase() : "";
+            let setter = null;
+            if (tag === "input") {
+                const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+                if (desc) setter = desc.set;
+            } else if (tag === "textarea") {
+                const desc = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
+                if (desc) setter = desc.set;
+            }
+            if (setter) {
+                setter.call(element, newValue);
+            } else {
+                element.value = newValue;
+            }
+          }
+
           function dispatchFieldEvents(element) {
+            element.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Unidentified" }));
+            element.dispatchEvent(new KeyboardEvent("keypress", { bubbles: true, key: "Unidentified" }));
             element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text || "" }));
+            element.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Unidentified" }));
             element.dispatchEvent(new Event("change", { bubbles: true }));
           }
 
@@ -227,11 +247,9 @@ enum BrowserActionJavaScript {
               const currentValue = String(element.value || "");
               const start = typeof element.selectionStart === "number" ? element.selectionStart : currentValue.length;
               const end = typeof element.selectionEnd === "number" ? element.selectionEnd : currentValue.length;
-              if (typeof element.setRangeText === "function") {
-                element.setRangeText(value, start, end, "end");
-              } else {
-                element.value = currentValue.slice(0, start) + value + currentValue.slice(end);
-              }
+              const newValue = currentValue.slice(0, start) + value + currentValue.slice(end);
+              
+              setNativeValue(element, newValue);
               dispatchFieldEvents(element);
               return true;
             }
@@ -253,7 +271,7 @@ enum BrowserActionJavaScript {
             element.focus();
 
             if (tag === "input" || tag === "textarea") {
-              element.value = "";
+              setNativeValue(element, "");
               dispatchFieldEvents(element);
               return true;
             }
