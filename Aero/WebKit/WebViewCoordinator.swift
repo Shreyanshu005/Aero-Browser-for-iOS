@@ -628,10 +628,9 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UI
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == passkeyMessageName else { return }
-        guard let url = tab.webView?.url else { return }
-        DispatchQueue.main.async {
-            UIApplication.shared.open(url)
-        }
+        // Many sites (like X.com) proactively check for passkeys on load.
+        // Opening Safari automatically here is extremely disruptive.
+        print("[Aero] Website requested passkey via WebAuthn.")
     }
 
     private func shouldDownload(_ navigationResponse: WKNavigationResponse) -> Bool {
