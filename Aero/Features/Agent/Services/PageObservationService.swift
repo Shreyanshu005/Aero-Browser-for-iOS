@@ -388,9 +388,11 @@ extension PageObservationService {
         const tag = element.tagName.toLowerCase();
         const role = (element.getAttribute('role') || '').toLowerCase();
         const type = (element.getAttribute('type') || '').toLowerCase();
-        return tag === 'button' ||
-          role === 'button' ||
-          (tag === 'input' && ['button', 'submit', 'reset', 'image'].includes(type));
+        if (tag === 'button' || role === 'button' || (tag === 'input' && ['button', 'submit', 'reset', 'image'].includes(type))) {
+          return true;
+        }
+        const className = (element.getAttribute('class') || '').toLowerCase();
+        return className.includes('btn') || className.includes('button');
       }
 
       function isEditableInput(element) {
@@ -647,7 +649,8 @@ extension PageObservationService {
           '[class*="status"]',
           '[class*="Status"]',
           '[class*="feed-item"]',
-          '[class*="timeline-item"]'
+          '[class*="result"]', '[class*="post"]', '[class*="tweet"]',
+          '[class*="timeline-item"]', '[class*="btn"]', '[class*="button"]'
         ].join(',');
         const records = [];
         const seen = new Set();
@@ -712,7 +715,7 @@ extension PageObservationService {
         .slice(0, limits.links)
         .map(linkRecord);
 
-      const buttons = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"], input[type="reset"], input[type="image"], [role="button"]'))
+      const buttons = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"], input[type="reset"], input[type="image"], [role="button"], [class*="btn"], [class*="button"]'))
         .filter(function(element) { return isButtonElement(element) && isVisibleElement(element); })
         .slice(0, limits.buttons)
         .map(buttonRecord);

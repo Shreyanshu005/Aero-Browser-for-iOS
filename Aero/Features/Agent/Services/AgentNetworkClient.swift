@@ -40,7 +40,7 @@ struct AgentNetworkClient {
     private static let rateLimitBackoffSeconds: [UInt64] = [10, 30]
     
     func nextAction(task: String, observation: AgentPageObservation, history: [String]) async throws -> String {
-        let cappedElements = Self.trimElements(observation.elements, limit: 25)
+        let cappedElements = Self.trimElements(observation.elements, limit: 40)
         
         let elements = cappedElements
             .map { "[\($0.id)] \($0.role): \($0.label)" }
@@ -60,6 +60,7 @@ struct AgentNetworkClient {
         Return ONE JSON. Actions: click(elementID), type(elementID,text,submit?), scroll(direction:up/down), navigate(url), wait(seconds), done(result).
         CRITICAL: "done" result MUST have the REAL answer with specific data from the page. Never say just "Task completed".
         If info is on the page, extract it now. If not, scroll/click/search to find it. Don't repeat failed actions.
+        NOTE: For date fields, always type in "YYYY-MM-DD" format.
         """
         
         // --- Improvement #2: 429 rate-limit backoff ---
