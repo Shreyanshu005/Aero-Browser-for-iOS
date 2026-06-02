@@ -21,9 +21,7 @@ struct MenuSheet: View {
                         }
                     }
                     .accessibilityIdentifier("browser.menu.agent")
-                }
 
-                Section {
                     menuButton("clock", "History") {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -44,9 +42,7 @@ struct MenuSheet: View {
                             }
                         }
                     }
-                }
 
-                Section {
                     if viewModel.activeTab?.url != nil {
                         menuButton(desktopToggleIcon, desktopToggleTitle) {
                             if isDesktopSiteEnabled {
@@ -65,9 +61,7 @@ struct MenuSheet: View {
                         }
                     }
                     .accessibilityIdentifier("browser.menu.settings")
-                }
                 
-                Section {
                     NavigationLink {
                         MoreOptionsMenu(viewModel: viewModel)
                     } label: {
@@ -148,18 +142,18 @@ struct MenuSheet: View {
     }
 
     private var menuRowBackground: some View {
-        Color.clear
+        Color(UIColor.systemBackground).opacity(0.5)
     }
 }
 
 struct MoreOptionsMenu: View {
-    @Bindable var viewModel: BrowserViewModel
+    let viewModel: BrowserViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
-            if viewModel.activeTab?.url != nil {
-                Section("Page Options") {
+            Section {
+                if viewModel.activeTab?.url != nil {
                     menuButton("magnifyingglass", "Find in Page") {
                         dismissMenu()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -191,41 +185,49 @@ struct MoreOptionsMenu: View {
                         dismissMenu()
                     }
                 }
-            }
 
-            Section("Browsing") {
-                if viewModel.canReopenLastClosedTab {
-                    menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
-                        viewModel.reopenLastClosedTab()
+                if let url = viewModel.activeTab?.url {
+                    menuButton("square.and.arrow.up", "Share") {
                         dismissMenu()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            SharePresenter.present(items: [url])
+                        }
                     }
                 }
-                menuButton("eye.slash", "New Private Tab") {
+
+                menuButton("plus.square.on.square", "New Tab") {
                     dismissMenu()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        viewModel.newPrivateTab()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        viewModel.newTab()
                     }
                 }
+                
+                if viewModel.activeTab?.url != nil {
+                    menuButton("eye.slash", "New Private Tab") {
+                        dismissMenu()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            viewModel.newPrivateTab()
+                        }
+                    }
+                }
+                
                 menuButton("arrow.down.circle", "Downloads") {
                     dismissMenu()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         viewModel.showDownloads = true
                     }
                 }
-            }
 
-            Section("Advanced") {
                 menuButton("shield.lefthalf.filled", "Privacy Report") {
                     dismissMenu()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         viewModel.showTrackerReceipt = true
                     }
                 }
-                if viewModel.activeTab?.url != nil {
-                    menuButton("speedometer", "Profile Page") {
-                        if let webView = viewModel.activeTab?.webView {
-                            Task { await viewModel.pageProfiler.profile(webView: webView) }
-                        }
+                
+                if viewModel.canReopenLastClosedTab {
+                    menuButton("arrow.uturn.backward", "Reopen Closed Tab") {
+                        viewModel.reopenLastClosedTab()
                         dismissMenu()
                     }
                 }
@@ -263,6 +265,6 @@ struct MoreOptionsMenu: View {
         }
         .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color(UIColor.systemBackground).opacity(0.5))
     }
 }
