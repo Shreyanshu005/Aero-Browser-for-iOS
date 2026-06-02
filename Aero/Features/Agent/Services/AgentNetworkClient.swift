@@ -57,10 +57,12 @@ struct AgentNetworkClient {
         ELEMENTS:\n\(elements.isEmpty ? "(none — scroll)" : elements)
         HISTORY:\n\(trimmedHistory.isEmpty ? "(start)" : trimmedHistory.joined(separator: "\n"))
 
-        Return ONE JSON. Actions: click(elementID), type(elementID,text,submit?), scroll(direction:up/down), navigate(url), wait(seconds), done(result).
+        Return ONE JSON object with a "thought" string (your plan) and the action keys at the top level.
+        Actions: click(elementID), type(elementID,text,submit?), scroll(direction:up/down), navigate(url), wait(seconds), done(result).
         CRITICAL: "done" result MUST have the REAL answer with specific data from the page. Never say just "Task completed".
         If info is on the page, extract it now. If not, scroll/click/search to find it. Don't repeat failed actions.
         NOTE: For date fields, always type in "YYYY-MM-DD" format.
+        NOTE: To search the web, DO NOT type into a search box. Instead, use navigate with a Google search URL (e.g., https://www.google.com/search?q=your+query).
         """
         
         // --- Improvement #2: 429 rate-limit backoff ---
