@@ -60,6 +60,7 @@ struct AgentNetworkClient {
         Return ONE JSON object with a "thought" string (your plan) and the action keys at the top level.
         Actions: click(elementID), type(elementID,text,submit?), scroll(direction:up/down), navigate(url), wait(seconds), done(result).
         CRITICAL: "done" result MUST have the REAL answer with specific data from the page. Never say just "Task completed".
+        CRITICAL: Do NOT stop at search engine result pages. You MUST click links and dive into actual websites (e.g. travel sites, stores, articles) to find concrete, deep information before returning "done".
         If info is on the page, extract it now. If not, scroll/click/search to find it. Don't repeat failed actions.
         NOTE: For date fields, always type in "YYYY-MM-DD" format.
         NOTE: To search the web, DO NOT type into a search box. Instead, use navigate with a Google search URL (e.g., https://www.google.com/search?q=your+query).
