@@ -75,7 +75,16 @@ struct AgentNetworkClient {
                 } else {
                     return try await generateOpenAI(prompt: prompt)
                 }
+            } catch let AgentNetworkError.rateLimited(retryAfter) {
+                lastError = AgentNetworkError.rateLimited(retryAfterSeconds: retryAfter)
+                if attempt < Self.maxRateLimitRetries {
+                    let defaultBackoff = Self.rateLimitBackoffSeconds[min(attempt, Self.rateLimitBackoffSeconds.count - 1)]
+                    let waitSeconds = max(UInt64(retryAfter ?? 0), defaultBackoff)
+                    try await Task.sleep(nanoseconds: waitSeconds * 1_000_000_000)
+                    continue
+                }
             } catch let error as AgentNetworkError where error.isRateLimited {
+                // Fallback for any other rate limit errors
                 lastError = error
                 if attempt < Self.maxRateLimitRetries {
                     let backoff = Self.rateLimitBackoffSeconds[min(attempt, Self.rateLimitBackoffSeconds.count - 1)]

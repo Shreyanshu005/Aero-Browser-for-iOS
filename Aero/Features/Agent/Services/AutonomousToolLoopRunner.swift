@@ -174,8 +174,8 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                 history.append("Action \(actionType) failed: \(error.localizedDescription)")
             }
             
-            // Wait for page to settle (1.5s spaces out API calls for rate limits)
-            _ = try await browserTools.wait(seconds: 1.5)
+            // Wait for page to settle and space out API calls to respect strict LLM rate limits (e.g., Groq TPM limits)
+            _ = try await browserTools.wait(seconds: 3.0)
         }
         
         return AgentToolLoopResult(finalAnswer: finalResult)
