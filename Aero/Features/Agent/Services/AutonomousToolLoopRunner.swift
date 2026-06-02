@@ -124,32 +124,40 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
             await updateStep(thinkStep, status: .running, detail: actionLabel, eventHandler: eventHandler)
             
             do {
+                var toolResult: AgentBrowserToolResult?
                 switch actionType {
                 case "click":
                     if let id = parsed["elementID"] as? String {
-                        _ = try await browserTools.click(elementID: id)
+                        toolResult = try await browserTools.click(elementID: id)
                     }
                 case "type":
                     if let text = parsed["text"] as? String {
                         let id = parsed["elementID"] as? String
-                        _ = try await browserTools.type(text, into: id)
-                        if parsed["submit"] as? Bool == true {
-                            _ = try await browserTools.pressKey(.enter)
+                        toolResult = try await browserTools.type(text, into: id)
+                        if toolResult?.actionResult?.status != .failed, parsed["submit"] as? Bool == true {
+                            toolResult = try await browserTools.pressKey(.enter)
                         }
                     }
                 case "navigate":
                     if let urlStr = parsed["url"] as? String, let url = URL(string: urlStr) {
-                        _ = try await browserTools.openURL(url)
+                        toolResult = try await browserTools.openURL(url)
                     }
                 case "scroll":
                     let dirStr = parsed["direction"] as? String ?? "down"
                     let dir: AgentScrollDirection = dirStr == "up" ? .up : .down
-                    _ = try await browserTools.scroll(dir)
+                    toolResult = try await browserTools.scroll(dir)
                 case "wait":
                     let secs = parsed["seconds"] as? Double ?? 2.0
-                    _ = try await browserTools.wait(seconds: secs)
+                    toolResult = try await browserTools.wait(seconds: secs)
                 default:
                     break
+                }
+                
+                if let result = toolResult, result.actionResult?.status == .failed {
+                    struct ToolFailure: Error, LocalizedError {
+                        var errorDescription: String?
+                    }
+                    throw ToolFailure(errorDescription: result.summary)
                 }
                 
                 await updateStep(thinkStep, status: .completed, detail: actionLabel, eventHandler: eventHandler)
