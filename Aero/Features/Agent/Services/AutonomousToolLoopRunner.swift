@@ -134,7 +134,15 @@ struct AutonomousToolLoopRunner: AgentToolLoopRunning {
                     if let text = parsed["text"] as? String {
                         let id = parsed["elementID"] as? String
                         toolResult = try await browserTools.type(text, into: id)
-                        if toolResult?.actionResult?.status != .failed, parsed["submit"] as? Bool == true {
+                        
+                        let shouldSubmit: Bool = {
+                            if let b = parsed["submit"] as? Bool { return b }
+                            if let s = parsed["submit"] as? String { return s.lowercased() == "true" }
+                            return false
+                        }()
+                        
+                        if toolResult?.actionResult?.status != .failed, shouldSubmit {
+                            try? await Task.sleep(nanoseconds: 500_000_000)
                             toolResult = try await browserTools.pressKey(.enter)
                         }
                     }
