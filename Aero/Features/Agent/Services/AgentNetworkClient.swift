@@ -37,51 +37,29 @@ struct AgentNetworkClient {
     private static let maxRateLimitRetries = 2
     
     /// Seconds to wait between rate-limit retries.
-    private static let rateLimitBackoffSeconds: [UInt64] = [5, 15]
+    private static let rateLimitBackoffSeconds: [UInt64] = [10, 30]
     
     func nextAction(task: String, observation: AgentPageObservation, history: [String]) async throws -> String {
-        let cappedElements = Self.trimElements(observation.elements, limit: 40)
+        let cappedElements = Self.trimElements(observation.elements, limit: 25)
         
         let elements = cappedElements
-            .map { "[\($0.id)] \($0.role): \($0.label) \($0.text)" }
+            .map { "[\($0.id)] \($0.role): \($0.label)" }
             .joined(separator: "\n")
         
         let trimmedHistory = Array(history.suffix(Self.maxHistoryTurns))
-        
-        let pageText = String(observation.visibleText.prefix(6000))
+        let pageText = String(observation.visibleText.prefix(2000))
             
         let prompt = """
         TASK: \(task)
-
-        CURRENT PAGE STATE:
         URL: \(observation.url?.absoluteString ?? "Unknown")
         Title: \(observation.title)
+        PAGE TEXT: \(pageText)
+        ELEMENTS:\n\(elements.isEmpty ? "(none — scroll)" : elements)
+        HISTORY:\n\(trimmedHistory.isEmpty ? "(start)" : trimmedHistory.joined(separator: "\n"))
 
-        VISIBLE PAGE TEXT:
-        \(pageText)
-
-        INTERACTIVE ELEMENTS (id, type, label):
-        \(elements.isEmpty ? "(no interactive elements found — try scrolling)" : elements)
-
-        ACTIONS ALREADY TAKEN:
-        \(trimmedHistory.isEmpty ? "(none yet)" : trimmedHistory.joined(separator: "\n"))
-
-        RULES:
-        1. Return exactly ONE JSON object. No markdown, no explanation.
-        2. Available actions:
-           {"action":"click","elementID":"<id>"} — click a button or link by its ID
-           {"action":"type","elementID":"<id>","text":"<text>"} — type text into an input field
-           {"action":"type","elementID":"<id>","text":"<text>","submit":true} — type and press Enter
-           {"action":"scroll","direction":"down"} — scroll to reveal more content (or "up")
-           {"action":"navigate","url":"<full_url>"} — go to a specific URL
-           {"action":"wait","seconds":2} — wait for page to load
-           {"action":"done","result":"<your detailed answer>"} — finish the task
-        3. When using "done", the "result" field MUST contain the ACTUAL answer to the user's question using information you found on the page. Include specific data, names, numbers, prices, text — whatever the user asked for. NEVER just say "Task completed" — that is useless.
-        4. If the page has the information the user needs, extract it from the VISIBLE PAGE TEXT above and return it with "done".
-        5. If you need more information, scroll down, click on relevant links, or navigate to find it.
-        6. If you see a search box and need to search, type the query and submit.
-        7. Do NOT repeat the same action. Check your history. If an action didn't work, try something different.
-        8. If stuck after several attempts, use "done" and explain what you found and what went wrong.
+        Return ONE JSON. Actions: click(elementID), type(elementID,text,submit?), scroll(direction:up/down), navigate(url), wait(seconds), done(result).
+        CRITICAL: "done" result MUST have the REAL answer with specific data from the page. Never say just "Task completed".
+        If info is on the page, extract it now. If not, scroll/click/search to find it. Don't repeat failed actions.
         """
         
         // --- Improvement #2: 429 rate-limit backoff ---
@@ -218,7 +196,7 @@ struct AgentNetworkClient {
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.1,
-            "max_tokens": 1024,
+            "max_tokens": 512,
             "response_format": ["type": "json_object"]
         ]
         
